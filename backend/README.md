@@ -9,15 +9,33 @@ Flask-based Python backend for AI-powered video profanity filtering.
 - 🛠️ RESTful API endpoints
 - 📁 File upload and processing
 - ⚡ Async processing with job queues
+- 🚀 Production-ready for Render deployment
 
-## Setup
+## Local Setup
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Quick start
+./start.sh
 
-# Run the server
+# Manual setup
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 python server.py
+```
+
+## Render Deployment
+
+```bash
+# Push to GitHub
+git add .
+git commit -m "Deploy backend"
+git push origin main
+
+# Deploy to Render (see RENDER_DEPLOYMENT.md for details)
+# 1. Connect GitHub repo to Render
+# 2. Set root directory to 'backend'
+# 3. Deploy automatically
 ```
 
 ## API Endpoints
@@ -30,9 +48,10 @@ python server.py
 ## Environment
 
 - Python 3.11+
-- Flask
+- Flask with CORS support
 - OpenAI Whisper
-- FFmpeg
+- FFmpeg (included in Render)
+- Gunicorn for production
 
 ## Processing Flow
 
@@ -42,3 +61,12 @@ python server.py
 4. Profanity detection and timestamping
 5. Video/audio censoring
 6. Return processed file
+
+## Production Features
+
+- ✅ Environment-based configuration
+- ✅ Gunicorn WSGI server
+- ✅ CORS enabled for frontend
+- ✅ Error handling and logging
+- ✅ File cleanup and management
+- ✅ Health monitoring endpoints

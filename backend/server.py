@@ -175,16 +175,24 @@ def internal_error(e):
     return jsonify({'error': 'Internal server error occurred.'}), 500
 
 if __name__ == '__main__':
+    # Get port from environment variable (Render sets PORT automatically)
+    port = int(os.environ.get('PORT', 5001))
+    host = os.environ.get('HOST', '0.0.0.0')
+    debug = os.environ.get('FLASK_ENV', 'production') == 'development'
+    
     print("🎬 MovieCensorAI Backend Server Starting...")
     print(f"🐍 Python Version: {sys.version}")
+    print(f"🌐 Environment: {os.environ.get('FLASK_ENV', 'production')}")
+    print(f"🔗 Host: {host}")
+    print(f"🔌 Port: {port}")
     print(f"📁 Upload folder: {os.path.abspath(UPLOAD_FOLDER)}")
     print(f"📁 Processed folder: {os.path.abspath(PROCESSED_FOLDER)}")
     print(f"🎯 Supported formats: {', '.join(ALLOWED_EXTENSIONS)}")
-    print("🚀 Server running on http://localhost:5001")
+    print(f"🚀 Server running on http://{host}:{port}")
     
     app.run(
-        host='0.0.0.0',
-        port=5001,
-        debug=True,
+        host=host,
+        port=port,
+        debug=debug,
         threaded=True
     )
