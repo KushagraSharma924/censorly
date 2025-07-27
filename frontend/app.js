@@ -68,7 +68,8 @@ app.get('/', (req, res) => {
     title: 'MovieCensorAI - Clean Your Videos with AI',
     error: null,
     success: null,
-    processedVideo: null
+    processedVideo: null,
+    backendUrl: BACKEND_URL
   });
 });
 
@@ -79,7 +80,8 @@ app.post('/upload', upload.single('video'), async (req, res) => {
         title: 'MovieCensorAI - Clean Your Videos with AI',
         error: 'Please select a video file to upload.',
         success: null,
-        processedVideo: null
+        processedVideo: null,
+        backendUrl: BACKEND_URL
       });
     }
 
@@ -117,7 +119,8 @@ app.post('/upload', upload.single('video'), async (req, res) => {
       title: 'MovieCensorAI - Clean Your Videos with AI',
       error: null,
       success: 'Video processed successfully! Your clean video is ready.',
-      processedVideo: `/processed/${processedFileName}`
+      processedVideo: `/processed/${processedFileName}`,
+      backendUrl: BACKEND_URL
     });
 
   } catch (error) {
@@ -142,7 +145,8 @@ app.post('/upload', upload.single('video'), async (req, res) => {
       title: 'MovieCensorAI - Clean Your Videos with AI',
       error: errorMessage,
       success: null,
-      processedVideo: null
+      processedVideo: null,
+      backendUrl: BACKEND_URL
     });
   }
 });
@@ -579,7 +583,8 @@ app.use((error, req, res, next) => {
         title: 'MovieCensorAI - Clean Your Videos with AI',
         error: 'File is too large. Maximum size is 100MB.',
         success: null,
-        processedVideo: null
+        processedVideo: null,
+        backendUrl: BACKEND_URL
       });
     }
   }
@@ -588,7 +593,8 @@ app.use((error, req, res, next) => {
     title: 'MovieCensorAI - Clean Your Videos with AI',
     error: 'An unexpected error occurred. Please try again.',
     success: null,
-    processedVideo: null
+    processedVideo: null,
+    backendUrl: BACKEND_URL
   });
 });
 

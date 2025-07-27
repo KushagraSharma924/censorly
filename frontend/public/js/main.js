@@ -5,21 +5,19 @@ let CONFIG = {
     backendUrl: 'http://localhost:5000' // Default fallback
 };
 
-// Load configuration from server
-async function loadConfig() {
-    try {
-        const response = await fetch('/api/config');
-        if (response.ok) {
-            CONFIG = await response.json();
-        }
-    } catch (error) {
-        console.warn('Failed to load config, using defaults:', error);
+// Load configuration from injected window object
+function loadConfig() {
+    if (window.APP_CONFIG && window.APP_CONFIG.backendUrl) {
+        CONFIG.backendUrl = window.APP_CONFIG.backendUrl;
+        console.log('Using backend URL:', CONFIG.backendUrl);
+    } else {
+        console.warn('No backend URL configured, using default:', CONFIG.backendUrl);
     }
 }
 
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     // Load configuration first
-    await loadConfig();
+    loadConfig();
     
     // Initialize API client
     const API = {

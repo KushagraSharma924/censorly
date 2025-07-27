@@ -878,6 +878,12 @@
     </div>
 
     <!-- JavaScript -->
+    <script>
+        // Global configuration injected from server
+        window.APP_CONFIG = {
+            backendUrl: '<%= backendUrl %>'
+        };
+    </script>
     <script src="/js/main.js"></script>
 </body>
 </html>
