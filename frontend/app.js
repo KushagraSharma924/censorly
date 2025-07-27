@@ -550,6 +550,19 @@ app.get('/api/razorpay-config', (req, res) => {
   });
 });
 
+// Get payment page URL
+app.get('/api/payment-page/:planId?', (req, res) => {
+  const { planId } = req.params;
+  const paymentPageUrl = process.env.RAZORPAY_PAYMENT_PAGE || 'https://rzp.io/rzp/censorly-upgrade';
+  
+  res.json({
+    success: true,
+    paymentUrl: paymentPageUrl,
+    planId: planId || 'pro',
+    message: 'Redirecting to secure payment page'
+  });
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {

@@ -221,8 +221,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     showAlert('Please fill out the contact form for enterprise pricing.', 'info');
                 }
             } else {
-                // Paid plans - open fullscreen checkout
-                await openCheckout(plan);
+                // Paid plans - redirect to Razorpay payment page
+                button.textContent = 'Redirecting to Payment...';
+                window.open('https://rzp.io/rzp/censorly-upgrade', '_blank');
+                showAlert('Redirecting to secure payment page...', 'info');
             }
         } catch (error) {
             console.error('Error handling plan selection:', error);
