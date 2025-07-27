@@ -21,7 +21,10 @@ const razorpay = new Razorpay({
 });
 
 // Middleware
-app.use(express.static('public'));
+app.use(express.static('public', {
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+  etag: false
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
@@ -29,6 +32,19 @@ app.use(cors());
 // Set EJS as template engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Additional static file routes for Vercel compatibility
+app.get('/css/:file', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'css', req.params.file));
+});
+
+app.get('/js/:file', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'js', req.params.file));
+});
+
+app.get('/images/:file', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'images', req.params.file));
+});
 
 // Ensure directories exist
 const ensureDirectories = async () => {

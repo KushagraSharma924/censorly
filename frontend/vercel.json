@@ -2,21 +2,22 @@
   "version": 2,
   "builds": [
     {
-      "src": "app.js",
+      "src": "package.json",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/(css|js|images)/(.*)",
-      "dest": "/public/$1/$2",
-      "headers": {
-        "cache-control": "s-maxage=31536000"
-      }
+      "src": "/css/(.*)",
+      "dest": "/public/css/$1"
     },
     {
-      "src": "/processed/(.*)",
-      "dest": "/public/processed/$1"
+      "src": "/js/(.*)",
+      "dest": "/public/js/$1"
+    },
+    {
+      "src": "/images/(.*)",
+      "dest": "/public/images/$1"
     },
     {
       "src": "/(.*)",
