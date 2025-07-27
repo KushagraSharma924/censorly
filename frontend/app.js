@@ -614,13 +614,18 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Start server
-ensureDirectories().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🎬 MovieCensorAI Frontend running on http://localhost:${PORT}`);
-    console.log(`📁 Upload directory: ${path.join(__dirname, 'uploads')}`);
-    console.log(`📁 Processed videos: ${path.join(__dirname, 'public/processed')}`);
-  });
-}).catch(console.error);
+// Start server (only if not in Vercel environment and not being imported)
+if (!process.env.VERCEL && require.main === module) {
+  ensureDirectories().then(() => {
+    app.listen(PORT, () => {
+      console.log(`🎬 MovieCensorAI Frontend running on http://localhost:${PORT}`);
+      console.log(`📁 Upload directory: ${path.join(__dirname, 'uploads')}`);
+      console.log(`📁 Processed videos: ${path.join(__dirname, 'public/processed')}`);
+    });
+  }).catch(console.error);
+} else {
+  // Ensure directories exist for Vercel
+  ensureDirectories().catch(console.error);
+}
 
 module.exports = app;
