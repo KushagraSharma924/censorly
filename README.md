@@ -1,22 +1,100 @@
-# ai-profanity-filter
+# MovieCensorAI 🎬
 
-🎬 **ai-profanity-filter** - An AI-powered tool to detect and censor abusive words from movies and videos.
+A production-ready SaaS platform for AI-powered video profanity filtering with modern web interface and payment integration.
 
-## Features
+## 🚀 Live Demo
 
-1. **Audio Extraction**: Extract audio from video files using ffmpeg
-2. **AI Transcription**: Transcribe audio using OpenAI Whisper with word-level timestamps
-3. **Profanity Detection**: Detect abusive words using the better-profanity library
-4. **Smart Censoring**: Replace offensive audio segments with beep sounds or mute them
-5. **Video Reconstruction**: Merge cleaned audio back into the original video
+**Frontend:** Modern SaaS interface with real-time processing  
+**Backend:** Flask API with Whisper AI integration  
+**Payment:** Fullscreen Razorpay checkout experience
 
-## Tech Stack
+## ✨ Features
 
-- **Python 3.11+** (recommended for full compatibility)
-- **OpenAI Whisper** - For speech-to-text transcription
-- **FFmpeg** - For audio/video processing
-- **better-profanity** - For profanity detection
-- **pydub** - For audio manipulation
+### 🎯 **Core AI Processing**
+- OpenAI Whisper for accurate speech-to-text
+- Smart profanity detection and censoring
+- Video/audio file processing
+- Real-time status monitoring
+
+### 💻 **SaaS Platform**
+- Professional web interface
+- REST API architecture
+- Real-time health monitoring
+- File upload with validation
+- Processing queue management
+
+### 💳 **Payment Integration**
+- Razorpay fullscreen checkout
+- Multiple pricing tiers (Free/Pro/Enterprise)
+- No customer form required
+- Payment verification system
+
+### 🛠️ **Production Ready**
+- Node.js/Express frontend
+- Flask Python backend
+- Environment-based configuration
+- Professional UI/UX design
+
+## 📁 Project Structure
+
+```
+├── frontend/              # Node.js/Express SaaS Platform
+│   ├── app.js            # Main API server
+│   ├── package.json      # Dependencies
+│   ├── public/           # Static assets
+│   │   ├── css/          # Tailwind CSS styles
+│   │   └── js/           # Frontend JavaScript
+│   └── views/            # EJS templates
+├── backend/              # Python Flask API
+│   ├── server.py         # Main Flask server
+│   ├── requirements.txt  # Python dependencies
+│   ├── audio_utils.py    # Audio processing
+│   ├── censor_utils.py   # Censoring logic
+│   ├── whisper_transcribe.py # AI transcription
+│   └── outputs/          # Processed files
+└── README.md             # This file
+```
+
+## 🚀 Quick Start
+
+### Frontend (SaaS Interface)
+```bash
+cd frontend
+npm install
+npm start
+# Access: http://localhost:3000
+```
+
+### Backend (Processing API)
+```bash
+cd backend
+pip install -r requirements.txt
+python server.py
+# API: http://localhost:5000
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+Create `frontend/.env`:
+```env
+RAZORPAY_KEY_ID=your_razorpay_key
+RAZORPAY_KEY_SECRET=your_razorpay_secret
+```
+
+### API Endpoints
+
+**Frontend APIs:**
+- `GET /api/health` - System health
+- `GET /api/stats` - Platform statistics  
+- `GET /api/pricing` - Pricing plans
+- `POST /api/contact` - Contact form
+- `POST /api/create-order` - Payment orders
+
+**Backend APIs:**
+- `POST /process` - File processing
+- `GET /status/<job_id>` - Processing status
+- `GET /formats` - Supported formats
 
 ## Installation
 
