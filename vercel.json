@@ -2,21 +2,26 @@
   "version": 2,
   "builds": [
     {
-      "src": "app.js",
+      "src": "frontend/app.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/app.js"
+      "dest": "/frontend/app.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/app.js"
+      "dest": "/frontend/app.js"
     }
   ],
   "env": {
     "NODE_ENV": "production"
+  },
+  "functions": {
+    "frontend/app.js": {
+      "maxDuration": 30
+    }
   }
 }
