@@ -48,6 +48,26 @@ venv.bak/
 # IDE & Editor Files
 .vscode/
 .idea/
+
+# Test and Demo Files (Removed from production)
+**/demo.py
+**/examples.py
+**/test_*.py
+**/setup_check.py
+**/wordlist_analysis.py
+**/*-new.*
+**/*-old.*
+**/*-backup.*
+
+# Temporary and Cache Directories
+temp/
+tmp/
+cache/
+.cache/
+outputs/
+processed/
+**/temp/
+**/tmp/
 *.swp
 *.swo
 *~
