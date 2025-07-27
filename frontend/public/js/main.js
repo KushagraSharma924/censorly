@@ -1,6 +1,26 @@
 // Main JavaScript for MovieCensorAI Frontend with API Integration
 
-document.addEventListener('DOMContentLoaded', function() {
+// Global configuration
+let CONFIG = {
+    backendUrl: 'http://localhost:5000' // Default fallback
+};
+
+// Load configuration from server
+async function loadConfig() {
+    try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+            CONFIG = await response.json();
+        }
+    } catch (error) {
+        console.warn('Failed to load config, using defaults:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    // Load configuration first
+    await loadConfig();
+    
     // Initialize API client
     const API = {
         baseURL: window.location.origin,
@@ -660,7 +680,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('censorType', censorType);
 
             // Submit to backend
-            const response = await fetch('http://localhost:5001/process', {
+            const response = await fetch(`${CONFIG.backendUrl}/process`, {
                 method: 'POST',
                 body: formData
             });
@@ -688,7 +708,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function pollJobStatus(jobId) {
         try {
-            const response = await fetch(`http://localhost:5001/status/${jobId}`);
+            const response = await fetch(`${CONFIG.backendUrl}/status/${jobId}`);
             const status = await response.json();
             
             updateProcessingStatus(status);

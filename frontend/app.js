@@ -12,6 +12,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
 // Razorpay Configuration
 const razorpay = new Razorpay({
@@ -96,7 +97,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     formData.append('censor_type', censorType);
 
     // Send to Flask backend
-    const response = await axios.post('http://localhost:5001/process', formData, {
+    const response = await axios.post(`${BACKEND_URL}/process`, formData, {
       headers: {
         ...formData.getHeaders(),
       },
@@ -171,7 +172,7 @@ app.get('/api/health', (req, res) => {
   };
 
   // Check backend service
-  axios.get('http://localhost:5001/health', { timeout: 5000 })
+  axios.get(`${BACKEND_URL}/health`, { timeout: 5000 })
     .then(() => {
       healthCheck.services.backend = 'connected';
       res.status(200).json(healthCheck);
@@ -560,6 +561,13 @@ app.get('/api/payment-page/:planId?', (req, res) => {
     paymentUrl: paymentPageUrl,
     planId: planId || 'pro',
     message: 'Redirecting to secure payment page'
+  });
+});
+
+// API endpoint to serve frontend configuration
+app.get('/api/config', (req, res) => {
+  res.json({
+    backendUrl: BACKEND_URL
   });
 });
 
