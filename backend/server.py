@@ -72,6 +72,23 @@ def simulate_video_processing(input_path, output_path, censor_type='beep'):
     
     return True
 
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint - API information."""
+    return jsonify({
+        'service': 'MovieCensorAI Backend',
+        'version': '1.0.0',
+        'status': 'running',
+        'timestamp': datetime.utcnow().isoformat(),
+        'endpoints': {
+            'health': '/health',
+            'process': '/process',
+            'formats': '/formats',
+            'status': '/status/<job_id>'
+        },
+        'documentation': 'https://github.com/yourusername/ai-profanity-filter'
+    })
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint."""
