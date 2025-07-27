@@ -1,5 +1,17 @@
 # MovieCensorAI - .gitignore
 
+# Environment variables (IMPORTANT: Keep credentials secure)
+.env
+frontend/.env
+*.env
+
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Python
 __pycache__/
 *.py[cod]
