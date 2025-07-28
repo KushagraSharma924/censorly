@@ -1,11 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "env": {
     "BACKEND_URL": "https://ai-profanity-filter.onrender.com",
     "RAZORPAY_KEY_ID": "@razorpay_key_id",
