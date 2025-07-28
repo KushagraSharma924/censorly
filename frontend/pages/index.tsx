@@ -203,8 +203,6 @@ export default function Home() {
         <meta name="description" content="Enterprise-grade AI-powered video content moderation. Remove profanity and inappropriate content from videos with 99.9% accuracy. Trusted by professionals worldwide." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
       </Head>
 
       <div className="min-h-screen bg-black text-white relative overflow-hidden">
