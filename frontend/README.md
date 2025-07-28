@@ -1,225 +1,150 @@
-# MovieCensorAI Frontend
+# MovieCensorAI Frontend - Next.js
 
-A premium Node.js + Express frontend web application for MovieCensorAI - an AI-powered video profanity filter.
-
-## 🚀 Features
-
-- **Premium UI Design**: Clean, modern interface inspired by premium SaaS applications
-- **Drag & Drop Upload**: Intuitive file upload with validation
-- **Real-time Processing**: Shows progress and status updates
-- **Multiple Censor Options**: Choose between beep sounds or muting
-- **Video Preview**: Preview processed videos before download
-- **Responsive Design**: Works perfectly on desktop, tablet, and mobile
-- **Pricing Plans**: Ready-to-integrate subscription tiers
-- **Buy Me a Coffee**: Support widget for donations
-
-## 🛠 Tech Stack
-
-- **Backend**: Node.js + Express
-- **Templating**: EJS
-- **Styling**: Tailwind CSS
-- **File Upload**: Multer
-- **HTTP Client**: Axios
-- **Icons**: Font Awesome
-- **Fonts**: Google Fonts (Inter)
-
-## 📁 Project Structure
-
-```
-frontend/
-├── app.js                 # Main Express server
-├── package.json          # Dependencies and scripts
-├── public/               # Static assets
-│   ├── css/
-│   │   └── style.css     # Custom styles
-│   ├── js/
-│   │   └── main.js       # Client-side JavaScript
-│   └── processed/        # Processed videos (auto-created)
-├── views/
-│   └── index.ejs         # Main template
-├── uploads/              # Temporary uploads (auto-created)
-└── README.md            # This file
-```
+A modern Next.js frontend application for MovieCensorAI - AI-powered video profanity filter.
 
 ## 🚀 Quick Start
 
-1. **Install Dependencies**:
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. **Start the Application**:
+2. **Set up environment variables**
    ```bash
-   npm start
+   cp .env.example .env.local
    ```
-   Or for development with auto-reload:
+   Edit `.env.local` with your actual values.
+
+3. **Run development server**
    ```bash
    npm run dev
    ```
 
-3. **Access the Application**:
-   Open http://localhost:3000 in your browser
+4. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-## ⚙️ Configuration
+## 📝 Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+## 🏗️ Project Structure
+
+```
+frontend/
+├── pages/
+│   ├── api/           # API routes
+│   ├── _app.js        # App component
+│   └── index.js       # Home page
+├── public/
+│   ├── processed/     # Processed videos
+│   └── static/        # Static assets
+├── uploads/           # Temporary uploads
+├── next.config.js     # Next.js configuration
+└── package.json       # Dependencies
+```
+
+## 🌐 API Endpoints
+
+- `POST /api/upload` - Upload and process video
+- `GET /api/health` - Health check
+- `GET /api/pricing` - Get pricing plans
+- `POST /api/create-order` - Create payment order
+- `POST /api/verify-payment` - Verify payment
+
+## 🎯 Features
+
+- **Modern React UI** - Built with Next.js and Tailwind CSS
+- **File Upload** - Drag & drop video upload with validation
+- **Real-time Processing** - AI-powered video processing
+- **Payment Integration** - Razorpay payment gateway
+- **Responsive Design** - Mobile-first responsive layout
+- **API Routes** - Server-side API endpoints
+
+## 🔧 Configuration
 
 ### Environment Variables
 
-Create a `.env` file in the root directory:
+```bash
+# Backend URL
+BACKEND_URL=http://localhost:5000
 
-```env
-PORT=3000
-FLASK_BACKEND_URL=http://localhost:5000
-MAX_FILE_SIZE=104857600
+# Razorpay Configuration
+RAZORPAY_KEY_ID=your_razorpay_key
+RAZORPAY_KEY_SECRET=your_razorpay_secret
 ```
 
-### Backend Integration
+### Next.js Configuration
 
-The frontend expects a Flask backend running on `http://localhost:5000/process` that accepts:
-
-**Request**:
-- Method: `POST`
-- Content-Type: `multipart/form-data`
-- Fields:
-  - `video`: Video file
-  - `censor_type`: "beep" or "mute"
-
-**Response**:
-- Content-Type: `video/mp4`
-- Body: Processed video file
-
-## 🎨 Customization
-
-### Styling
-
-- Modify `public/css/style.css` for custom styles
-- Update Tailwind config in `views/index.ejs` for theme changes
-- Change colors in the Tailwind config section
-
-### Branding
-
-- Update logo and text in `views/index.ejs`
-- Modify pricing plans in the pricing section
-- Update Buy Me a Coffee URL
-
-### Features
-
-- Add new pages by creating EJS templates
-- Extend API endpoints in `app.js`
-- Add new client-side features in `public/js/main.js`
-
-## 📱 Responsive Design
-
-The application is fully responsive and includes:
-
-- Mobile-optimized layouts
-- Touch-friendly interactions
-- Adaptive typography
-- Flexible grid systems
-
-## 🔒 Security Features
-
-- File type validation
-- File size limits
-- Input sanitization
-- CORS protection
-- Error handling
+The `next.config.js` file includes:
+- Environment variable mapping
+- Static file routing
+- Server actions configuration
 
 ## 🚀 Deployment
 
-### Local Development
+### Vercel (Recommended)
 
-```bash
-npm run dev
-```
+1. **Connect repository** to Vercel
+2. **Set environment variables** in Vercel dashboard
+3. **Deploy** automatically on push
 
-### Production
+### Manual Deployment
 
-```bash
-npm start
-```
+1. **Build application**
+   ```bash
+   npm run build
+   ```
 
-### Deploy to Vercel
+2. **Start production server**
+   ```bash
+   npm start
+   ```
 
-1. Install Vercel CLI: `npm i -g vercel`
-2. Run: `vercel`
-3. Follow the prompts
+## 🔗 Backend Integration
 
-### Deploy to Render
+This frontend connects to the Python Flask backend for video processing:
+- Default: `http://localhost:5000`
+- Production: `https://ai-profanity-filter.onrender.com`
 
-1. Connect your GitHub repository
-2. Set build command: `npm install`
-3. Set start command: `npm start`
+## 📱 Browser Support
 
-## 🔧 API Endpoints
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
 
-### Frontend Routes
+## 🛠️ Technology Stack
 
-- `GET /` - Main landing page
-- `POST /upload` - Process video upload
-- `GET /api/status/:jobId` - Check processing status (future feature)
-
-### Static Files
-
-- `/css/*` - Stylesheets
-- `/js/*` - JavaScript files
-- `/processed/*` - Processed videos for download
-
-## 🎯 Future Enhancements
-
-- [ ] User authentication system
-- [ ] Payment integration (Stripe/Razorpay)
-- [ ] Real-time progress tracking with WebSockets
-- [ ] Video compression before processing
-- [ ] Batch processing for multiple files
-- [ ] Advanced profanity filter settings
-- [ ] Video preview with timestamps
-- [ ] Download history and cloud storage
-- [ ] API for developers
-- [ ] Analytics dashboard
+- **Framework**: Next.js 14
+- **UI**: React 18, Tailwind CSS
+- **File Upload**: Multer, FormData
+- **HTTP Client**: Axios
+- **Payment**: Razorpay
+- **Deployment**: Vercel
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **Backend Connection Error**:
-   - Ensure Flask backend is running on port 5000
-   - Check the backend URL in the code
+1. **Upload fails**: Check backend URL and ensure Flask server is running
+2. **Payment errors**: Verify Razorpay credentials
+3. **Build errors**: Check Node.js version (18+ required)
 
-2. **File Upload Fails**:
-   - Check file size limits
-   - Verify file format is supported
-   - Ensure uploads directory has write permissions
+### Development
 
-3. **Processing Timeout**:
-   - Increase timeout in axios configuration
-   - Check backend processing capacity
-
-### Error Handling
-
-The application includes comprehensive error handling for:
-- Network connectivity issues
-- File validation errors
-- Backend processing errors
-- Timeout scenarios
+- Ensure backend is running on port 5000
+- Check browser console for client-side errors
+- Verify API endpoints are accessible
 
 ## 📄 License
 
-This project is licensed under the MIT License.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## 📞 Support
-
-For support, please contact us through:
-- GitHub Issues
-- Email support (coming soon)
-- Buy Me a Coffee for donations
-
----
-
-**Built with ❤️ for clean content creation**
+MIT License - see LICENSE file for details.
