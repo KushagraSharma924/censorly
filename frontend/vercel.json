@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "env": {
-    "BACKEND_URL": "https://ai-profanity-filter.onrender.com",
-    "RAZORPAY_KEY_ID": "@razorpay_key_id",
-    "RAZORPAY_KEY_SECRET": "@razorpay_key_secret"
-  },
   "functions": {
     "pages/api/**/*.ts": {
       "maxDuration": 60
