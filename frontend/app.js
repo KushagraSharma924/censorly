@@ -89,6 +89,13 @@ app.get('/', (req, res) => {
   });
 });
 
+// API Documentation route
+app.get('/api-docs', (req, res) => {
+  res.render('api-docs', {
+    title: 'API Documentation - MovieCensorAI'
+  });
+});
+
 app.post('/upload', upload.single('video'), async (req, res) => {
   try {
     if (!req.file) {
