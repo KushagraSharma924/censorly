@@ -1,24 +1,32 @@
 {
-  "name": "moviecensorai-frontend",
+  "name": "cleancast-ai-frontend",
   "version": "1.0.0",
-  "description": "Frontend web application for MovieCensorAI - AI-powered video profanity filter",
+  "description": "CleanCast AI - Professional AI-powered video content moderation platform",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "vercel-build": "next build"
   },
   "keywords": [
     "ai",
     "video",
-    "censoring",
-    "profanity",
-    "filter"
+    "content-moderation",
+    "profanity-filter",
+    "next.js",
+    "vercel"
   ],
-  "author": "MovieCensorAI",
+  "author": "CleanCast AI",
   "license": "MIT",
+  "homepage": "https://cleancast-ai.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ai-profanity-filter.git",
+    "directory": "frontend"
+  },
   "dependencies": {
     "next": "^14.0.0",
     "react": "^18.0.0",
@@ -41,5 +49,9 @@
     "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
