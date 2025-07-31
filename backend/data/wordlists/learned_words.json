@@ -1,1 +1,1446 @@
-{}
+{
+  "hinglish": [
+    {
+      "word": "badir",
+      "meaning": "idiot",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "badirchand",
+      "meaning": "idiot",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bakland",
+      "meaning": "idiot",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhadva",
+      "meaning": "pimp",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhootnika",
+      "meaning": "son of a witch",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chinaal",
+      "meaning": "whore",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chup",
+      "meaning": "shut up",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chutia",
+      "meaning": "fucker",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "ghasti",
+      "meaning": "hooker",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chutiya",
+      "meaning": "fucker",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "haraami",
+      "meaning": "bastard",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "haraam",
+      "meaning": "bastard",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "hijra",
+      "meaning": "transsexual",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "hinjda",
+      "meaning": "transsexual",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jaanvar",
+      "meaning": "animal",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kutta",
+      "meaning": "dog",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kutiya",
+      "meaning": "bitch",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "khota",
+      "meaning": "donkey",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "auladheen",
+      "meaning": "sonless",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jaat",
+      "meaning": "breed",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "najayaz",
+      "meaning": "illegitimate",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gandpaidaish",
+      "meaning": "badborn",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "saala",
+      "meaning": "sisters husband",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kutti",
+      "meaning": "bitch",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "soover",
+      "meaning": "swine",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "tatti",
+      "meaning": "shit",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "potty",
+      "meaning": "shit",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bahenchod",
+      "meaning": "sister fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bahanchod",
+      "meaning": "sister fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bahencho",
+      "meaning": "sister fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bancho",
+      "meaning": "sister fucker",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bahenke",
+      "meaning": "sisters",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "laude",
+      "meaning": "dick",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "takke",
+      "meaning": "balls",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "betichod",
+      "meaning": "daughter fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhaichod",
+      "meaning": "brother fucker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhains",
+      "meaning": "buffalo",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jhalla",
+      "meaning": "faggot",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jhant",
+      "meaning": "pubic",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "nabaal",
+      "meaning": "hairless",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "pissu",
+      "meaning": "bug",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kutte",
+      "meaning": "dog",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "maadherchod",
+      "meaning": "mother fucker",
+      "severity": 10,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "madarchod",
+      "meaning": "motherfucker",
+      "severity": 10,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "padma",
+      "meaning": "fat bitch",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "raand",
+      "meaning": "whore",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jamai",
+      "meaning": "son-in-law",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "randwa",
+      "meaning": "male prostitute",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "randi",
+      "meaning": "hooker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bachachod",
+      "meaning": "son fucker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bachichod",
+      "meaning": "daughter fucker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "soower",
+      "meaning": "swine",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bachchechod",
+      "meaning": "children fucker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "ullu",
+      "meaning": "idiot",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "pathe",
+      "meaning": "idiot",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "banda",
+      "meaning": "semi-dick",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "booblay",
+      "meaning": "boobs",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "booby",
+      "meaning": "boobs",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "buble",
+      "meaning": "boobs",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "babla",
+      "meaning": "boobs",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhonsriwala",
+      "meaning": "fucker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhonsdiwala",
+      "meaning": "fucker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "ched",
+      "meaning": "pussy",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chut",
+      "meaning": "pussy",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chod",
+      "meaning": "fuck",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chodu",
+      "meaning": "fucker",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chodra",
+      "meaning": "fucker",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "choochi",
+      "meaning": "boobs",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chuchi",
+      "meaning": "boobs",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gaandu",
+      "meaning": "asshole",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gandu",
+      "meaning": "asshole",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gaand",
+      "meaning": "ass",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "lavda",
+      "meaning": "dick",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "lawda",
+      "meaning": "dick",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "lauda",
+      "meaning": "dick",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "lund",
+      "meaning": "dick",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "balchod",
+      "meaning": "hair fucker",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "lavander",
+      "meaning": "dick head",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "muth",
+      "meaning": "masturbate",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "maacho",
+      "meaning": "mother fucker",
+      "severity": 10,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "mammey",
+      "meaning": "boobs",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "tatte",
+      "meaning": "boobs",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "toto",
+      "meaning": "penis",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "toota",
+      "meaning": "broken",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "backar",
+      "meaning": "gossip",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhandwe",
+      "meaning": "pimp",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhosadchod",
+      "meaning": "ass fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhosad",
+      "meaning": "pussy",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bumchod",
+      "meaning": "ass fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bum",
+      "meaning": "ass",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bur",
+      "meaning": "pussy",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chatani",
+      "meaning": "ketchup",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "cunt",
+      "meaning": "pussy",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "cuntmama",
+      "meaning": "pussy",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chipkali",
+      "meaning": "lizzard",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "pasine",
+      "meaning": "sweat",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jhaat",
+      "meaning": "cunt",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chodela",
+      "meaning": "fucked up",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhagatchod",
+      "meaning": "saint fucker",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chhola",
+      "meaning": "clit",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chudai",
+      "meaning": "fucking",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chudaikhana",
+      "meaning": "whore house",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chunni",
+      "meaning": "clit",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "choot",
+      "meaning": "pussy",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhoot",
+      "meaning": "ghost",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "dhakkan",
+      "meaning": "idiot",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhajiye",
+      "meaning": "snack",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "fateychu",
+      "meaning": "torn pussy",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gandnatije",
+      "meaning": "Bad result",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "lundtopi",
+      "meaning": "condom",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gaandfat",
+      "meaning": "ass",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gaandmasti",
+      "meaning": "ass",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "makhanchudai",
+      "meaning": "fucking",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gaandmarau",
+      "meaning": "ass fuck",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chaatu",
+      "meaning": "licker",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "beej",
+      "meaning": "semen",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "choosu",
+      "meaning": "sucker",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "fakeerchod",
+      "meaning": "saint fucker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "lundoos",
+      "meaning": "dick",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "shorba",
+      "meaning": "semen",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "binbheja",
+      "meaning": "brainless",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhadwe",
+      "meaning": "pimp",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "parichod",
+      "meaning": "angel fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "nirodh",
+      "meaning": "condom.",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "pucchi",
+      "meaning": "pussy",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "baajer",
+      "meaning": "fucker",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "choud",
+      "meaning": "fuck",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bhosda",
+      "meaning": "pussy",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "sadi",
+      "meaning": "stinking",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "choos",
+      "meaning": "suck",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "maka",
+      "meaning": "mothers",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gadde",
+      "meaning": "boobs",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "joon",
+      "meaning": "bug",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chullugand",
+      "meaning": "handful dirt",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "doob",
+      "meaning": "drown",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "khatmal",
+      "meaning": "bug",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gandkate",
+      "meaning": "ass",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bambu",
+      "meaning": "bamboo",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "lassan",
+      "meaning": "garlic",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "danda",
+      "meaning": "stick",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "keera",
+      "meaning": "bug",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "keeda",
+      "meaning": "bug",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "hazaarchu",
+      "meaning": "thousand pussy",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "paidaishikeeda",
+      "meaning": "born bug",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kali",
+      "meaning": "nigger",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "safaid",
+      "meaning": "american",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "poot",
+      "meaning": "son",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "behendi",
+      "meaning": "sister",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chus",
+      "meaning": "sucker",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "machudi",
+      "meaning": "mother fucker",
+      "severity": 10,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chodoonga",
+      "meaning": "fuck",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "baapchu",
+      "meaning": "father pussy",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "laltern",
+      "meaning": "lantern",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "suhaagchudai",
+      "meaning": "wedding fuck",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "raatchuda",
+      "meaning": "night fuck",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kaalu",
+      "meaning": "migga",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "neech",
+      "meaning": "low caste",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chikna",
+      "meaning": "gay",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "meetha",
+      "meaning": "gay",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "beechka",
+      "meaning": "gay",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chooche",
+      "meaning": "boobs",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "patichod",
+      "meaning": "husband",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "rundi",
+      "meaning": "prostitute",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "makkhi",
+      "meaning": "fly",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "biwichod",
+      "meaning": "wife fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chodhunga",
+      "meaning": "fuck",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "haathi",
+      "meaning": "elephant",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kute",
+      "meaning": "dog",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jhanten",
+      "meaning": "pubic hair",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kaat",
+      "meaning": "cut",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gandi",
+      "meaning": "filthy",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "gadha",
+      "meaning": "donkey",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bimaar",
+      "meaning": "ill",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "badboodar",
+      "meaning": "smelly",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "dum",
+      "meaning": "tail",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "raandsaala",
+      "meaning": "sisters brother pimp",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "phudi",
+      "meaning": "pussy",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chute",
+      "meaning": "pussy",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kussi",
+      "meaning": "ass",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "khandanchod",
+      "meaning": "family fucker",
+      "severity": 9,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "ghussa",
+      "meaning": "fuck",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "maarey",
+      "meaning": "dead",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chipkili",
+      "meaning": "lizard",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "unday",
+      "meaning": "eggs",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "budh",
+      "meaning": "cunt",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chaarpai",
+      "meaning": "cot",
+      "severity": 1,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chodun",
+      "meaning": "fuck",
+      "severity": 5,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chatri",
+      "meaning": "condom",
+      "severity": 3,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chode",
+      "meaning": "fuck",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chodho",
+      "meaning": "fuck",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "mullekatue",
+      "meaning": "Derogatory abuse to muslims",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "mullikatui",
+      "meaning": "Derogatory Abuse to female muslim",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "mullekebaal",
+      "meaning": "Derogatory Abuse to muslim",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "momedankatue",
+      "meaning": "Derogatory Abuse to muslim",
+      "severity": 6,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "katua",
+      "meaning": "dick cut",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chutiyapa",
+      "meaning": "fuck all",
+      "severity": 8,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "bc",
+      "meaning": "sister fucker",
+      "severity": 10,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "mc",
+      "meaning": "mother fucker",
+      "severity": 10,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "chudwaya",
+      "meaning": "fuck",
+      "severity": 7,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "kutton",
+      "meaning": "dog",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jungli",
+      "meaning": "wild",
+      "severity": 2,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "vahiyaat",
+      "meaning": "disgusting",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "jihadi",
+      "meaning": "terrorist",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "atankvadi",
+      "meaning": "terrorist",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "atankwadi",
+      "meaning": "terrorist",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    },
+    {
+      "word": "aatanki",
+      "meaning": "terorist",
+      "severity": 4,
+      "source": "csv_training",
+      "confidence": 1.0
+    }
+  ]
+}

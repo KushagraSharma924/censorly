@@ -1,13 +1,67 @@
-# MovieCensorAI Backend
+# AI Profanity Filter Backend
 
-Flask-based Python backend for AI-powered video profanity filtering.
+Production-ready Flask backend for multilingual video profanity detection and censoring.
 
 ## Features
 
-- 🎥 Video/Audio processing with Whisper AI
-- 🔍 Profanity detection and censoring
-- 🛠️ RESTful API endpoints
-- 📁 File upload and processing
+- 🎥 Video/Audio processing with OpenAI Whisper
+- 🌐 Multilingual profanity detection (English, Hindi, Hinglish, Urdu)
+- 🛠️ RESTful API endpoints for video processing
+- 📁 Secure file upload and processing
+- 🧠 Adaptive learning system
+- 🔄 Real-time job tracking
+- 📊 Comprehensive reporting
+
+## Quick Start
+
+```bash
+# Setup
+./setup.sh
+
+# Run
+python3 app.py
+```
+
+## API Endpoints
+
+- `POST /api/upload` - Upload and process video
+- `GET /api/status/<job_id>` - Check processing status
+- `GET /api/download/<job_id>` - Download processed video
+- `GET /api/health` - Health check
+
+## Architecture
+
+```
+backend/
+├── api/                    # API routes
+├── services/              # Core business logic
+├── utils/                 # Utility functions
+├── models/                # Data models
+├── data/                  # Data storage
+├── training/              # Training scripts
+├── app.py                 # Main application
+└── config.py              # Configuration
+```
+
+## Training
+
+Add CSV files and run training:
+```bash
+cd training/
+python3 boom_train.py
+```
+
+## Production Deployment
+
+1. Set environment variables:
+   - `PORT` (default: 9001)
+   - `FLASK_ENV` (production/development)
+
+2. Deploy using the provided `Procfile` for platforms like Render, Heroku, etc.
+
+## Documentation
+
+See `ARCHITECTURE.md` for detailed system architecture and component documentation.
 - ⚡ Async processing with job queues
 - 🚀 Production-ready for Render deployment
 
