@@ -7,13 +7,13 @@ import os
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 
 # Import our modular components
-from modules.transcribe import transcribe_with_whisper
-from modules.detect_words import detect_abusive_words
-from modules.detect_nsfw import detect_nsfw_scenes
-from modules.ffmpeg_tools import (
+from services.transcription import transcribe_with_whisper
+from services.profanity_detection import detect_abusive_words, analyze_and_improve_detection, manual_word_training
+from services.nsfw_detection import detect_nsfw_scenes
+from utils.ffmpeg_tools import (
     extract_audio, merge_audio_to_video, apply_beep, apply_mute, cut_scenes,
     validate_video_file, get_video_duration
 )
@@ -86,20 +86,66 @@ def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None,
             print(f"✅ Audio extracted to: {audio_path}")
             
             # Step 2: Transcribe audio
-            print("\n🎙️ Step 2: Transcribing audio with Whisper...")
+            print("\n🎙️ Step 2: Transcribing audio with Whisper (auto model selection)...")
             transcript_data = transcribe_with_whisper(str(audio_path))
             result['steps_completed'].append('transcription')
+            
+            # Show which model was used
+            model_used = transcript_data.get('model_used', 'unknown')
+            print(f"🤖 Whisper model used: {model_used}")
             print(f"✅ Transcription completed. Found {len(transcript_data.get('segments', []))} segments.")
             
-            # Step 3: Detect abusive words
-            print("\n🚫 Step 3: Detecting abusive words...")
+            # Debug: Show transcribed text
+            if transcript_data.get('text'):
+                print(f"📝 Transcribed text: '{transcript_data['text'][:200]}{'...' if len(transcript_data['text']) > 200 else ''}'")
+            
+            # Debug: Show segments
+            for i, segment in enumerate(transcript_data.get('segments', [])[:3]):  # Show first 3 segments
+                print(f"   Segment {i+1}: '{segment.get('text', '')}' ({segment.get('start', 0):.1f}s-{segment.get('end', 0):.1f}s)")
+                if len(transcript_data.get('segments', [])) > 3 and i == 2:
+                    print(f"   ... and {len(transcript_data.get('segments', [])) - 3} more segments")
+            
+            # Step 3: Detect abusive words with adaptive learning
+            print("\n🚫 Step 3: Detecting abusive words (with adaptive learning)...")
             if custom_words:
-                from modules.detect_words import add_custom_profanity_words
+                from services.profanity_detection import add_custom_profanity_words
                 add_custom_profanity_words(custom_words)
             
-            profane_segments = detect_abusive_words(transcript_data)
+            # Use the improved detection with learning
+            analysis_result = analyze_and_improve_detection(
+                transcript_data, 
+                video_filename=input_file.name
+            )
+            
+            profane_segments = analysis_result['detected_segments']
+            learning_result = analysis_result['learning_result']
+            
             result['steps_completed'].append('word_detection')
             result['segments_processed'] = len(profane_segments)
+            result['learning_result'] = learning_result
+            
+            # Debug: Show learning results
+            if learning_result['total_learned'] > 0:
+                print(f"🎓 Adaptive learning: Learned {learning_result['total_learned']} new words from this video")
+                for lang, words in learning_result['learned_words'].items():
+                    if words:
+                        print(f"   {lang}: {words[:5]}{'...' if len(words) > 5 else ''}")
+            
+            # Debug: Show detailed detection results
+            print(f"🔍 Word detection completed:")
+            if profane_segments:
+                print(f"   Found {len(profane_segments)} profane segments:")
+                for i, segment in enumerate(profane_segments):
+                    duration = segment['end'] - segment['start']
+                    languages_str = ", ".join(segment.get('languages', []))
+                    print(f"   {i+1}. '{segment['text']}' ({segment['start']:.2f}s-{segment['end']:.2f}s)")
+                    print(f"      Words: {segment.get('profane_words', [])} | Languages: {languages_str}")
+            else:
+                print("   No profane words detected in any language (English/Hindi)")
+                # Even if no segments detected, check if we can learn from transcript
+                if learning_result['total_learned'] == 0:
+                    print("💡 Consider manually training with missed words using manual_word_training()")
+                    print("   Example: manual_word_training(['word1', 'word2'], 'hindi_latin')")
             
             if not profane_segments:
                 print("✅ No profane words detected. Copying original video.")
@@ -193,7 +239,7 @@ def _cleanup_temp_files(temp_path: Path) -> None:
         print(f"⚠️ Warning: Could not clean up temporary files: {e}")
 
 
-def get_supported_modes() -> List[Dict[str, str]]:
+def get_supported_modes() -> List[Dict[str, Union[str, bool]]]:
     """
     Get list of supported processing modes.
     

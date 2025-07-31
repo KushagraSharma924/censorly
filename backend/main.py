@@ -9,9 +9,9 @@ import argparse
 from pathlib import Path
 
 # Import our custom modules
-from audio_utils import extract_audio, merge_audio_to_video
-from whisper_transcribe import transcribe_audio
-from censor_utils import detect_and_censor_audio
+from utils.audio_utils import extract_audio, merge_audio_to_video
+from services.transcription import transcribe_with_whisper
+from utils.censor_utils import detect_and_censor_audio
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
         
         # Step 2: Transcribe audio using Whisper
         print("\n🎙️ Step 2: Transcribing audio with OpenAI Whisper...")
-        transcript_data = transcribe_audio(str(audio_path))
+        transcript_data = transcribe_with_whisper(str(audio_path))
         print(f"✅ Transcription completed. Found {len(transcript_data['segments'])} segments.")
         
         # Step 3: Detect abusive words and create censored audio
