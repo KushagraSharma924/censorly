@@ -3,15 +3,14 @@ Enhanced SaaS Flask Application for AI Profanity Filter Platform
 Complete production-ready Flask app with JWT auth, billing, and API management.
 """
 
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from datetime import timedelta
 import os
 import logging
 from dotenv import load_dotenv
-from sqlalchemy import text
 
 # Load environment variables
 load_dotenv()
@@ -34,7 +33,7 @@ except ImportError:
     saas_bp = None
 
 try:
-    from api.modern_routes import api_v2_bp as modern_bp
+    from api.modern_routes import modern_bp
 except ImportError:
     print("Warning: modern_routes blueprint not available")
     modern_bp = None
@@ -93,30 +92,14 @@ def create_app():
     migrate = Migrate(app, db)
     jwt = JWTManager(app)
     
-    # CORS configuration - Enhanced for better frontend compatibility
-    CORS(app, 
-         origins=[
-             "http://localhost:3000", 
-             "http://localhost:5173", 
-             "http://127.0.0.1:3000",
-             "http://127.0.0.1:5173",
-             "https://profanityfilter.ai"
-         ],
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-         allow_headers=[
-             "Content-Type", 
-             "Authorization", 
-             "X-API-Key",
-             "X-Requested-With",
-             "Accept",
-             "Origin",
-             "Access-Control-Request-Method",
-             "Access-Control-Request-Headers"
-         ],
-         supports_credentials=True,
-         expose_headers=["Content-Range", "X-Content-Range"],
-         resources={r"/*": {"origins": "*"}}  # Allow all routes
-    )
+    # CORS configuration
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://localhost:3000", "http://localhost:5173", "https://profanityfilter.ai"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-API-Key"]
+        }
+    })
     
     # JWT configuration
     @jwt.expired_token_loader
@@ -130,8 +113,6 @@ def create_app():
     @jwt.unauthorized_loader
     def missing_token_callback(error):
         return jsonify({'error': 'Token is required'}), 401
-    
-    # Let Flask-CORS handle all CORS headers automatically
     
     # Register blueprints (only if available)
     if auth_bp:
@@ -150,9 +131,8 @@ def create_app():
     def health_check():
         """Health check endpoint for monitoring."""
         try:
-            # Test database connection - check if we can query the users table
-            from models.saas_models import User
-            User.query.first()
+            # Test database connection
+            db.session.execute('SELECT 1')
             db_status = 'healthy'
         except Exception as e:
             db_status = f'unhealthy: {str(e)}'
@@ -168,79 +148,11 @@ def create_app():
                 'subscription_billing',
                 'multi_language_detection',
                 'video_processing',
-                'nsfw_content_detection',
-                'real_time_processing'
+                'background_jobs'
             ]
-        })
-
-    # Debug endpoint to test authentication
-    @app.route('/api/debug/auth', methods=['GET'])
-    @jwt_required()
-    def debug_auth():
-        """Debug endpoint to test JWT authentication."""
-        try:
-            user_id = get_jwt_identity()
-            jwt_data = get_jwt()
-            
-            return jsonify({
-                'authenticated': True,
-                'user_id': user_id,
-                'jwt_claims': jwt_data,
-                'message': 'Authentication successful'
-            })
-        except Exception as e:
-            return jsonify({
-                'authenticated': False,
-                'error': str(e)
-            }), 500
-
-    # Legacy route alias for backward compatibility
-    @app.route('/api/process-video', methods=['POST', 'OPTIONS'])
-    def process_video_legacy():
-        """Legacy route that forwards to the v2 endpoint."""
-        if request.method == 'OPTIONS':
-            # Handle preflight request
-            response = make_response()
-            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-            return response
-        
-        # For POST requests, forward to the actual handler
-        try:
-            from api.modern_routes import upload_and_process_video
-            return upload_and_process_video()
-        except ImportError:
-            return jsonify({'error': 'Video processing service unavailable'}), 503
-
-    # Legacy route alias for jobs endpoint
-    @app.route('/api/jobs', methods=['GET', 'POST', 'OPTIONS'])
-    def jobs_legacy():
-        """Legacy route that returns empty jobs list for now."""
-        if request.method == 'OPTIONS':
-            return '', 200
-        try:
-            if request.method == 'GET':
-                # Return empty jobs list for now
-                return jsonify({'jobs': []}), 200
-            else:
-                return jsonify({'error': 'Method not implemented'}), 501
-        except Exception as e:
-            logger.error(f"Jobs endpoint error: {str(e)}")
-            return jsonify({'error': 'Jobs service unavailable'}), 503    # Legacy route alias for individual job endpoint
-    @app.route('/api/jobs/<job_id>', methods=['GET', 'OPTIONS'])
-    def job_detail_legacy(job_id):
-        """Legacy route that forwards to the v2 job detail endpoint."""
-        if request.method == 'OPTIONS':
-            response = make_response()
-            response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-            return response
-        
-        try:
-            from api.modern_routes import get_job_status
-            return get_job_status(int(job_id))
-        except (ImportError, ValueError):
-            return jsonify({'error': 'Job service unavailable'}), 503    # API documentation endpoint
+        }), 200 if db_status == 'healthy' else 503
+    
+    # API documentation endpoint
     @app.route('/api/docs')
     def api_documentation():
         """API documentation and feature overview."""

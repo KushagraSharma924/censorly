@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const API_BASE_URL = 'http://localhost:9001';
+const API_BASE_URL = 'http://localhost:8080';
 
 export interface ProcessingResult {
   success: boolean;

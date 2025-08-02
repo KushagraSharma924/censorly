@@ -1,41 +1,70 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/auth-context";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { LoginForm } from "@/components/auth/LoginForm";
-import { RegisterForm } from "@/components/auth/RegisterForm";
-import { Dashboard } from "@/pages/Dashboard";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
+import Navbar from '@/components/Navbar';
+import HomePage from '@/pages/HomePage';
+import LoginPage from '@/pages/LoginPage';
+import Dashboard from '@/pages/Dashboard';
+import PricingPage from '@/pages/PricingPage';
+import UploadPage from '@/pages/UploadPage';
 
-const queryClient = new QueryClient();
+// Simple auth check
+const isAuthenticated = () => {
+  return !!localStorage.getItem('access_token');
+};
+
+// Protected route component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return isAuthenticated() ? <>{children}</> : <Navigate to="/login" />;
+};
+
+// Public route component (redirect to dashboard if already logged in)
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return !isAuthenticated() ? <>{children}</> : <Navigate to="/dashboard" />;
+};
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+  <Router>
+    <div className="min-h-screen bg-background">
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<HomePage />} />
+        <Route 
+          path="/login" 
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          } 
+        />
+        <Route path="/pricing" element={<PricingPage />} />
+        
+        {/* Protected routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/upload" 
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <UploadPage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
       <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginForm />} />
-            <Route path="/register" element={<RegisterForm />} />
-            <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+    </div>
+  </Router>
 );
 
 export default App;

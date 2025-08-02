@@ -5,6 +5,9 @@
 			"label": "Start Backend Server",
 			"type": "shell",
 			"command": "python3 app.py",
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
 			"group": "build",
 			"isBackground": true,
 			"problemMatcher": []
