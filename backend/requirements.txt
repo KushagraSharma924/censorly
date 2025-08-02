@@ -4,6 +4,22 @@ flask-cors==4.0.0
 werkzeug==2.3.7
 gunicorn==21.2.0
 
+# SaaS Authentication & Database
+flask-jwt-extended==4.5.3
+flask-sqlalchemy==3.0.5
+flask-migrate==4.0.5
+bcrypt==4.0.1
+python-dotenv==1.0.0
+
+# Supabase integration
+supabase==2.0.2
+psycopg2-binary==2.9.7
+
+# Background Jobs & Redis
+celery==5.3.4
+redis==5.0.1
+flower==2.0.1
+
 # AI/ML dependencies
 openai-whisper==20231117
 better-profanity==0.7.0
@@ -11,6 +27,14 @@ better-profanity==0.7.0
 # Media processing dependencies
 ffmpeg-python==0.2.0
 pydub==0.25.1
+
+# File handling & Storage
+boto3==1.28.85
+botocore==1.31.85
+
+# Validation & Security
+marshmallow==3.20.1
+python-multipart==0.0.6
 
 # Future AI model dependencies (uncomment when implementing)
 # opencv-python==4.8.1.78

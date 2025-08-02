@@ -81,6 +81,10 @@ HINDI_LATIN_WORDS = [
     "chootiya", "chootiye", "chotiya", "chotiye", "chootia", "chutia", "cutiya",
     "ch00tiya", "chut1ya", "chu7iya", "ch8tiya", "chutiy@", "chutiy4",
     
+    # Core short forms and standalone words
+    "chu", "chut", "choot", "chud", "chuda", "chudi", "chudai",
+    "bhen", "bhench", "mc", "bc", "madarchod", "behenchod",
+    
     # Madarchod variations
     "madarchod", "madarchod hai", "madar chod", "mader chod", "madarchoda",
     "madarchood", "madarchoot", "madarchoot hai", "madarjaat", "madarjat",
@@ -628,23 +632,19 @@ def detect_profane_words_in_text(text: str) -> List[Dict[str, Any]]:
 
 def detect_profane_words(text: str) -> List[str]:
     """
-    Legacy function for backward compatibility.
-    Detect profane words in a given text.
-    
-    Args:
-        text (str): Text to check for profanity
-    
-    Returns:
-        List of profane words found
+    Simple profanity detection function for backward compatibility.
+    Uses the new regex-based scanner.
     """
-    detected = detect_profane_words_in_text(text)
-    return [item['word'] for item in detected]
+    from .profanity_scanner import find_profanity_matches
+    
+    matches = find_profanity_matches(text)
+    return [match['word'] for match in matches]
 
 
 def detect_abusive_words(transcript_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Find segments containing profane words with their timestamps across multiple languages.
-    Supports English, Hindi (Latin), and Hindi (Devanagari) profanity detection.
+    Find segments containing profane words with their timestamps using regex-based scanner.
+    Optimized for production use with multilingual support.
     
     Args:
         transcript_data: Whisper transcription result
@@ -652,86 +652,46 @@ def detect_abusive_words(transcript_data: Dict[str, Any]) -> List[Dict[str, Any]
     Returns:
         List of dictionaries with profane segments and timestamps
     """
-    profane_segments = []
+    from .profanity_scanner import scan_segments
     
     if not transcript_data or 'segments' not in transcript_data:
-        return profane_segments
+        return []
     
-    # First priority: Check word-level timestamps if available
-    word_level_found = False
-    for segment in transcript_data.get('segments', []):
-        for word_info in segment.get('words', []):
-            word = word_info['word'].strip()
-            detected_profanity = detect_profane_words_in_text(word)
-            
-            if detected_profanity:
-                # Get the primary language of detected profanity
-                primary_lang = detected_profanity[0]['language']
-                detected_words = [item['word'] for item in detected_profanity]
-                
-                profane_segments.append({
-                    'text': word,
-                    'start': word_info['start'],
-                    'end': word_info['end'],
-                    'profane_words': detected_words,
-                    'languages': [item['language'] for item in detected_profanity],
-                    'primary_language': primary_lang,
-                    'type': 'word'
-                })
-                word_level_found = True
+    # Use the optimized regex scanner
+    segments = transcript_data.get('segments', [])
+    abusive_segments = scan_segments(segments)
     
-    # If no word-level timestamps found, fall back to segment-level
-    if not word_level_found:
-        print("⚠️  No word-level timestamps found, using segment-level censoring")
-        for segment in transcript_data.get('segments', []):
-            segment_text = segment['text'].strip()
-            detected_profanity = detect_profane_words_in_text(segment_text)
-            
-            if detected_profanity:
-                # Get unique languages and words
-                languages = list(set([item['language'] for item in detected_profanity]))
-                detected_words = list(set([item['word'] for item in detected_profanity]))
-                primary_lang = detected_profanity[0]['language']
-                
-                profane_segments.append({
-                    'text': segment_text,
-                    'start': segment['start'],
-                    'end': segment['end'],
-                    'profane_words': detected_words,
-                    'languages': languages,
-                    'primary_language': primary_lang,
-                    'type': 'segment'
-                })
-    
-    # Remove duplicates and sort by start time
-    unique_segments = []
-    seen_times = set()
-    
-    for segment in profane_segments:
-        time_key = (round(segment['start'], 3), round(segment['end'], 3))
-        if time_key not in seen_times:
-            seen_times.add(time_key)
-            unique_segments.append(segment)
-    
-    unique_segments.sort(key=lambda x: x['start'])
+    # Convert to expected format for backward compatibility
+    profane_segments = []
+    for segment in abusive_segments:
+        profane_segments.append({
+            'text': segment['text'],
+            'start': segment['start'],
+            'end': segment['end'],
+            'profane_words': segment['profane_words'],
+            'languages': segment['languages'],
+            'primary_language': segment['languages'][0] if segment['languages'] else 'unknown',
+            'type': 'segment'
+        })
     
     # Log detection summary
-    if unique_segments:
+    if profane_segments:
         lang_summary = {}
-        for segment in unique_segments:
+        for segment in profane_segments:
             for lang in segment['languages']:
                 lang_summary[lang] = lang_summary.get(lang, 0) + 1
         
-        print(f"🔍 Detected profanity in {len(unique_segments)} segments:")
+        print(f"🔍 Detected profanity in {len(profane_segments)} segments:")
         for lang, count in lang_summary.items():
             lang_name = {
                 'english': 'English',
-                'hindi_latin': 'Hindi (Latin)',
-                'hindi_devanagari': 'Hindi (Devanagari)'
-            }.get(lang, lang)
+                'hindi': 'Hindi',
+                'hinglish': 'Hinglish',
+                'custom': 'Custom'
+            }.get(lang, lang.title())
             print(f"   - {lang_name}: {count} segments")
     
-    return unique_segments
+    return profane_segments
 
 
 def initialize_profanity_filter():

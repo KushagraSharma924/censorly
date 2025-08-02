@@ -4,16 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { videoService } from '@/lib/video-service';
+import { useAuth } from '@/contexts/auth-context';
+import { toast } from '@/hooks/use-toast';
 
 interface VideoUploadProps {
-  onUpload: (file: File, mode: string) => Promise<void>;
-  isProcessing: boolean;
+  onJobCreated?: (jobId: string) => void;
 }
 
-export const VideoUpload: React.FC<VideoUploadProps> = ({ onUpload, isProcessing }) => {
+export const VideoUpload: React.FC<VideoUploadProps> = ({ onJobCreated }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filterMode, setFilterMode] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const { isAuthenticated } = useAuth();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -48,8 +53,47 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ onUpload, isProcessing
   }, []);
 
   const handleSubmit = async () => {
-    if (selectedFile && filterMode) {
-      await onUpload(selectedFile, filterMode);
+    if (!selectedFile || !filterMode) return;
+    
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to upload and process videos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      
+      const result = await videoService.uploadVideo(selectedFile, {
+        censoring_mode: filterMode as 'beep' | 'mute' | 'cut'
+      });
+      
+      toast({
+        title: "Upload successful",
+        description: `Your video is being processed. Job ID: ${result.job_id}`,
+      });
+      
+      // Reset form
+      setSelectedFile(null);
+      setFilterMode('');
+      
+      // Notify parent component
+      if (onJobCreated) {
+        onJobCreated(result.job_id);
+      }
+      
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      toast({
+        title: "Upload failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -81,7 +125,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ onUpload, isProcessing
               : selectedFile
               ? "border-success bg-success/5"
               : "border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/30",
-            isProcessing && "pointer-events-none opacity-50"
+            isUploading && "pointer-events-none opacity-50"
           )}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -93,7 +137,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ onUpload, isProcessing
             accept="video/*"
             onChange={handleFileSelect}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            disabled={isProcessing}
+            disabled={isUploading}
           />
           
           {selectedFile ? (
@@ -140,7 +184,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ onUpload, isProcessing
         {/* Filter Mode Selection */}
         <div className="space-y-3">
           <label className="text-sm font-medium">Choose filter mode:</label>
-          <Select value={filterMode} onValueChange={setFilterMode} disabled={isProcessing}>
+          <Select value={filterMode} onValueChange={setFilterMode} disabled={isUploading}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select how to handle inappropriate content" />
             </SelectTrigger>
@@ -151,7 +195,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ onUpload, isProcessing
               <SelectItem value="mute">
                 🔇 Mute profane words
               </SelectItem>
-              <SelectItem value="cut-scene" disabled>
+              <SelectItem value="cut" disabled>
                 ✂️ Cut NSFW scenes (Coming soon)
               </SelectItem>
             </SelectContent>
@@ -161,15 +205,15 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ onUpload, isProcessing
         {/* Submit Button */}
         <Button
           onClick={handleSubmit}
-          disabled={!selectedFile || !filterMode || isProcessing}
-          variant={isProcessing ? "warning" : "hero"}
+          disabled={!selectedFile || !filterMode || isUploading}
+          variant={isUploading ? "outline" : "default"}
           size="lg"
           className="w-full"
         >
-          {isProcessing ? (
+          {isUploading ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Processing Video...
+              Uploading Video...
             </>
           ) : (
             "Clean My Video"

@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # Flask Backend
+  backend:
+    build: ./backend
+    ports:
+      - "9001:9001"
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@db:5432/profanity_filter
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_SECRET_KEY=dev-jwt-secret
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+      - backend_processed:/app/processed
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    command: ["python", "app.py"]
+
+  # Celery Worker
+  celery_worker:
+    build: ./backend
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@db:5432/profanity_filter
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_SECRET_KEY=dev-jwt-secret
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+      - backend_processed:/app/processed
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    command: ["celery", "-A", "services.celery_worker.celery", "worker", "--loglevel=info"]
+
+  # Celery Beat (for periodic tasks)
+  celery_beat:
+    build: ./backend
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@db:5432/profanity_filter
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_SECRET_KEY=dev-jwt-secret
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    command: ["celery", "-A", "services.celery_worker.celery", "beat", "--loglevel=info"]
+
+  # Flower (Celery monitoring)
+  flower:
+    build: ./backend
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+    command: ["celery", "-A", "services.celery_worker.celery", "flower", "--port=5555"]
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=profanity_filter
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_uploads:
+  backend_processed:
+
+networks:
+  default:
+    name: profanity_filter_network

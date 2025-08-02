@@ -152,7 +152,7 @@ class AppConfig:
             self.allowed_extensions = ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'm4v']
         if self.cors_origins is None:
             self.cors_origins = [
-                "http://localhost:3000",
+                "http://localhost:8080",
                 "http://localhost:5173", 
                 "http://127.0.0.1:3000",
                 "http://127.0.0.1:5173"

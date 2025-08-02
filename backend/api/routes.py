@@ -311,3 +311,81 @@ def register_routes(app):
         except Exception as e:
             logger.error(f"Cleanup error: {str(e)}")
             return jsonify({'error': f'Cleanup failed: {str(e)}'}), 500
+
+    # Test endpoints for the new profanity scanner
+    @app.route('/api/test-profanity', methods=['POST'])
+    def test_profanity():
+        """Test profanity detection on a text string."""
+        try:
+            from services.profanity_scanner import is_abusive, find_profanity_matches
+            
+            data = request.get_json()
+            text = data.get('text', '')
+            
+            if not text:
+                return jsonify({'error': 'Text is required'}), 400
+            
+            is_profane = is_abusive(text)
+            matches = find_profanity_matches(text)
+            detected_words = [match['word'] for match in matches]
+            
+            return jsonify({
+                'text': text,
+                'is_profane': is_profane,
+                'detected_words': detected_words,
+                'matches': matches
+            })
+            
+        except Exception as e:
+            logger.error(f"Profanity test error: {str(e)}")
+            return jsonify({'error': f'Profanity test failed: {str(e)}'}), 500
+
+    @app.route('/api/scan-segments', methods=['POST'])
+    def scan_segments_endpoint():
+        """Test segment scanning functionality."""
+        try:
+            from services.profanity_scanner import scan_segments as scanner_scan_segments
+            
+            data = request.get_json()
+            segments = data.get('segments', [])
+            
+            if not segments:
+                return jsonify({'error': 'Segments are required'}), 400
+            
+            abusive_segments = scanner_scan_segments(segments)
+            
+            return jsonify({
+                'total_segments': len(segments),
+                'abusive_segments': abusive_segments,
+                'abusive_count': len(abusive_segments)
+            })
+            
+        except Exception as e:
+            logger.error(f"Segment scanning error: {str(e)}")
+            return jsonify({'error': f'Segment scanning failed: {str(e)}'}), 500
+
+    @app.route('/api/scanner-stats', methods=['GET'])
+    def scanner_stats():
+        """Get profanity scanner statistics."""
+        try:
+            from services.profanity_scanner import get_statistics
+            
+            stats = get_statistics()
+            return jsonify(stats)
+            
+        except Exception as e:
+            logger.error(f"Scanner stats error: {str(e)}")
+            return jsonify({'error': f'Scanner stats failed: {str(e)}'}), 500
+
+    @app.route('/health', methods=['GET'])
+    def health_check_new():
+        """Health check endpoint."""
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': time.time(),
+            'services': {
+                'profanity_scanner': True,
+                'celery_worker': True,
+                'backend': True
+            }
+        })
