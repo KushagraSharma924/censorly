@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,128 +15,73 @@ interface Plan {
   features: string[];
 }
 
-interface PlansResponse {
-  plans: Record<string, Plan>;
-  currency: string;
-  payment_methods: string[];
-  test_mode: boolean;
-}
-
 const PricingPage: React.FC = () => {
-  const [plans, setPlans] = useState<Record<string, Plan>>({});
-  const [loading, setLoading] = useState(true);
-  const [testMode, setTestMode] = useState(false);
-
-  useEffect(() => {
-    fetchPlans();
-  }, []);
-
-  const fetchPlans = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/plans`);
-      const data: PlansResponse = await response.json();
-      
-      setPlans(data.plans);
-      setTestMode(data.test_mode);
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to fetch plans:', error);
-      setLoading(false);
+  // Static plans with different pricing for each card
+  const plans = {
+    basic: {
+      id: 'basic',
+      name: 'Basic',
+      price: 799,
+      currency: '₹',
+      billing_cycle: 'monthly',
+      features: [
+        '10,000 API calls per month',
+        'Basic profanity detection',
+        'Text content filtering',
+        'Email support',
+        'Community access'
+      ]
+    },
+    pro: {
+      id: 'pro',
+      name: 'Pro',
+      price: 2499,
+      currency: '₹',
+      billing_cycle: 'monthly',
+      features: [
+        '100,000 API calls per month',
+        'Advanced AI detection',
+        'Audio & video filtering',
+        'Priority support',
+        'Custom filters',
+        'Analytics dashboard'
+      ]
+    },
+    enterprise: {
+      id: 'enterprise',
+      name: 'Enterprise',
+      price: 7999,
+      currency: '₹',
+      billing_cycle: 'monthly',
+      features: [
+        'Unlimited API calls',
+        'Custom AI models',
+        'Multi-media processing',
+        '24/7 phone support',
+        'White-label solution',
+        'Advanced analytics',
+        'SLA guarantee'
+      ]
     }
   };
 
-  const handleSubscribe = async (planId: string) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        alert('Please login to subscribe');
-        return;
-      }
+  const [loading] = useState(false);
+  const [testMode] = useState(false);
 
-      // Create payment order
-      const response = await fetch(`${API_BASE_URL}/api/payment/create-order`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ plan_id: planId })
-      });
+  // Razorpay payment links for different plans
+  const razorpayLinks = {
+    basic: 'https://rzp.io/rzp/upgradebasic',
+    pro: 'https://rzp.io/rzp/upgradepro',
+    enterprise: 'https://rzp.io/rzp/upgradeenterprise'
+  };
 
-      const orderData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(orderData.error || 'Failed to create order');
-      }
-
-      // Initialize Razorpay payment
-      const options = {
-        key: orderData.key_id,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'AI Profanity Filter',
-        description: `Subscribe to ${orderData.plan.name}`,
-        order_id: orderData.order_id,
-        prefill: {
-          name: orderData.user.name,
-          email: orderData.user.email
-        },
-        handler: async (response: any) => {
-          // Verify payment
-          try {
-            const verifyResponse = await fetch(`${API_BASE_URL}/api/payment/verify-payment`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })
-            });
-
-            const verifyData = await verifyResponse.json();
-            
-            if (verifyResponse.ok) {
-              alert('Payment successful! Your subscription is now active.');
-              window.location.reload();
-            } else {
-              throw new Error(verifyData.error || 'Payment verification failed');
-            }
-          } catch (error) {
-            console.error('Payment verification error:', error);
-            alert('Payment verification failed. Please contact support.');
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            console.log('Payment modal closed');
-          }
-        },
-        theme: {
-          color: '#3B82F6'
-        }
-      };
-
-      // Load Razorpay script if not already loaded
-      if (!window.Razorpay) {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => {
-          const rzp = new window.Razorpay(options);
-          rzp.open();
-        };
-        document.body.appendChild(script);
-      } else {
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      }
-
-    } catch (error) {
-      console.error('Subscription error:', error);
-      alert('Failed to initiate payment. Please try again.');
+  const handleSubscribe = (planId: string) => {
+    const paymentLink = razorpayLinks[planId as keyof typeof razorpayLinks];
+    if (paymentLink) {
+      // Open Razorpay payment link in new tab
+      window.open(paymentLink, '_blank');
+    } else {
+      alert('Payment link not available for this plan');
     }
   };
 

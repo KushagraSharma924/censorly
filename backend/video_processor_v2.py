@@ -15,13 +15,14 @@ from services.abuse_classifier import load_classifier
 from services.nsfw_detection import detect_nsfw_scenes
 from utils.ffmpeg_tools import (
     extract_audio, merge_audio_to_video, apply_beep, apply_mute, cut_scenes,
-    validate_video_file, get_video_duration
+    apply_beep_to_video, apply_mute_to_video, get_video_duration, validate_video_file
 )
 
 
 def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None, 
-                 abuse_threshold: float = 0.7,
-                 nsfw_model: str = "nudenet") -> Dict[str, Any]:
+                 abuse_threshold: float = 0.3,
+                 nsfw_model: str = "nudenet",
+                 whisper_model: str = "base") -> Dict[str, Any]:
     """
     Main video processing function with modern abuse classification.
     
@@ -31,6 +32,7 @@ def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None,
         temp_dir (str, optional): Temporary directory for processing files
         abuse_threshold (float): Threshold for abuse detection (0.0-1.0)
         nsfw_model (str): Model type for NSFW detection
+        whisper_model (str): Whisper model to use ('base', 'medium', 'large')
     
     Returns:
         Dict with processing results and output path
@@ -86,8 +88,8 @@ def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None,
         extract_audio(input_path, str(audio_path))
         
         # Transcribe audio using Whisper
-        print("🎤 Transcribing audio with Whisper...")
-        transcription_result = transcribe_with_whisper(str(audio_path))
+        print(f"🎤 Transcribing audio with Whisper model: {whisper_model}")
+        transcription_result = transcribe_with_whisper(str(audio_path), whisper_model)
         
         if not transcription_result or 'segments' not in transcription_result:
             raise Exception("Transcription failed or returned no segments")
@@ -106,11 +108,11 @@ def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None,
             classifier = None
         
         # Detect abusive segments using the new classifier
-        print("🔍 Detecting abusive content...")
+        print("🔍 Detecting abusive words...")
         abusive_segments = detect_abusive_segments(segments, classifier, abuse_threshold)
         
         results['abusive_segments'] = abusive_segments
-        print(f"🚨 Found {len(abusive_segments)} abusive segments")
+        print(f"🚨 Found {len(abusive_segments)} abusive words")
         
         # Handle different processing modes
         if mode == 'cut-nsfw':
@@ -128,16 +130,16 @@ def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None,
                 results['output_path'] = input_path
         
         elif abusive_segments:
-            # Process abusive audio segments
-            print(f"🎛️  Applying {mode} to abusive segments...")
+            # Process abusive words
+            print(f"🎛️  Applying {mode} to {len(abusive_segments)} abusive words...")
             
             if mode == 'beep':
                 output_path = temp_path / f"{input_filename}_beeped.mp4"
-                apply_beep(input_path, abusive_segments, str(output_path))
+                apply_beep_to_video(input_path, abusive_segments, str(output_path))
                 
             elif mode == 'mute':
                 output_path = temp_path / f"{input_filename}_muted.mp4"
-                apply_mute(input_path, abusive_segments, str(output_path))
+                apply_mute_to_video(input_path, abusive_segments, str(output_path))
                 
             elif mode == 'cut-scene':
                 output_path = temp_path / f"{input_filename}_cut.mp4"
@@ -147,7 +149,7 @@ def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None,
             print(f"✅ Processed video saved to: {output_path}")
             
         else:
-            print("✅ No abusive content found")
+            print("✅ No abusive words found")
             results['output_path'] = input_path
         
         results['status'] = 'completed'
@@ -175,7 +177,7 @@ def detect_abusive_segments(segments: List[Dict[str, Any]],
                           classifier, 
                           threshold: float = 0.7) -> List[Dict[str, Any]]:
     """
-    Detect abusive segments using the modern abuse classifier.
+    Detect abusive words (not entire segments) using word-level timestamps.
     
     Args:
         segments: List of transcription segments from Whisper
@@ -183,65 +185,93 @@ def detect_abusive_segments(segments: List[Dict[str, Any]],
         threshold: Confidence threshold for abuse detection
     
     Returns:
-        List of abusive segments with timestamps and metadata
+        List of abusive word segments with precise timestamps
     """
     abusive_segments = []
     
     if classifier is None:
-        print("⚠️  No classifier available, using fallback detection")
-        return _fallback_abuse_detection(segments)
+        print("⚠️  No classifier available, using word-level fallback detection")
+        return _fallback_word_level_detection(segments)
     
     try:
         for segment in segments:
-            text = segment.get('text', '').strip()
-            if not text:
+            # Check if segment has word-level timestamps
+            words = segment.get('words', [])
+            if not words:
+                # Fallback to segment-level if no word timestamps
+                text = segment.get('text', '').strip()
+                if text and classifier:
+                    result = classifier.predict(text, return_score=True)
+                    if _is_abusive_result(result, threshold):
+                        abusive_segments.append({
+                            'start': segment.get('start', 0),
+                            'end': segment.get('end', 0),
+                            'text': text,
+                            'is_abusive': True,
+                            'confidence': _get_confidence(result),
+                            'method': 'segment_level'
+                        })
                 continue
             
-            # Get prediction with confidence score
-            result = classifier.predict(text, return_score=True)
-            
-            if isinstance(result, dict):
-                is_abusive = result.get('is_abusive', False)
-                confidence = result.get('confidence', 0.0)
+            # Process each word individually
+            for word_data in words:
+                word_text = word_data.get('word', '').strip()
+                if not word_text:
+                    continue
                 
-                if is_abusive and confidence >= threshold:
+                # Get prediction for individual word
+                result = classifier.predict(word_text, return_score=True)
+                
+                if _is_abusive_result(result, threshold):
                     abusive_segments.append({
-                        'start': segment.get('start', 0),
-                        'end': segment.get('end', 0),
-                        'text': text,
+                        'start': word_data.get('start', 0),
+                        'end': word_data.get('end', 0),
+                        'text': word_text,
                         'is_abusive': True,
-                        'confidence': confidence,
-                        'model_type': result.get('model_type', 'unknown'),
-                        'method': 'classifier'
-                    })
-            else:
-                # Simple boolean result
-                if result:
-                    abusive_segments.append({
-                        'start': segment.get('start', 0),
-                        'end': segment.get('end', 0),
-                        'text': text,
-                        'is_abusive': True,
-                        'confidence': 1.0,
-                        'method': 'classifier_simple'
+                        'confidence': _get_confidence(result),
+                        'method': 'word_level'
                     })
     
     except Exception as e:
         print(f"❌ Classifier error: {e}")
-        print("📦 Using fallback detection...")
-        return _fallback_abuse_detection(segments)
+        print("📦 Using word-level fallback detection...")
+        return _fallback_word_level_detection(segments)
+    
+    # If classifier found nothing, also try fallback detection as a safety net
+    if len(abusive_segments) == 0:
+        print("📦 No classifier detections, trying word-level fallback detection...")
+        fallback_segments = _fallback_word_level_detection(segments)
+        if fallback_segments:
+            print(f"✅ Fallback detected {len(fallback_segments)} abusive words")
+            return fallback_segments
     
     return abusive_segments
 
 
-def _fallback_abuse_detection(segments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _is_abusive_result(result, threshold: float) -> bool:
+    """Check if classifier result indicates abuse above threshold."""
+    if isinstance(result, dict):
+        is_abusive = result.get('is_abusive', False)
+        confidence = result.get('confidence', 0.0)
+        return is_abusive and confidence >= threshold
+    return bool(result)
+
+
+def _get_confidence(result) -> float:
+    """Extract confidence score from classifier result."""
+    if isinstance(result, dict):
+        return result.get('confidence', 1.0)
+    return 1.0
+
+
+def _fallback_word_level_detection(segments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Fallback abuse detection using simple keyword matching.
-    Used when the main classifier is not available.
+    Word-level fallback abuse detection using keyword matching.
     """
     # Basic abuse words for fallback
     abuse_keywords = [
-        'fuck', 'fucking', 'shit', 'damn', 'hell', 'ass', 'bitch',
+        'fuck', 'fucking', 'shit', 'damn', 'hell', 'ass', 'bitch', 'dick',
+        'pussy', 'cock', 'bastard', 'crap', 'piss', 'whore', 'slut',
         'chutiya', 'madarchod', 'bc', 'behenchod', 'randi', 'saala',
         'bhosdi', 'lauda', 'lund', 'gandu', 'harami'
     ]
@@ -249,28 +279,51 @@ def _fallback_abuse_detection(segments: List[Dict[str, Any]]) -> List[Dict[str, 
     abusive_segments = []
     
     for segment in segments:
-        text = segment.get('text', '').strip().lower()
-        if not text:
-            continue
-        
-        # Check for abuse keywords (whole word matching)
-        text_words = text.split()
-        detected_words = []
-        
-        for keyword in abuse_keywords:
-            if keyword in text_words or any(keyword in word for word in text_words):
-                detected_words.append(keyword)
-        
-        if detected_words:
-            abusive_segments.append({
-                'start': segment.get('start', 0),
-                'end': segment.get('end', 0),
-                'text': segment.get('text', ''),
-                'is_abusive': True,
-                'confidence': 0.8,  # Fixed confidence for keyword matching
-                'method': 'fallback_keywords',
-                'detected_words': detected_words
-            })
+        # Check if segment has word-level timestamps
+        words = segment.get('words', [])
+        if words:
+            # Process individual words with timestamps
+            for word_data in words:
+                word_text = word_data.get('word', '').strip().lower()
+                # Remove punctuation for comparison
+                clean_word = ''.join(c for c in word_text if c.isalnum())
+                
+                if clean_word in abuse_keywords:
+                    abusive_segments.append({
+                        'start': word_data.get('start', 0),
+                        'end': word_data.get('end', 0),
+                        'text': word_data.get('word', ''),
+                        'is_abusive': True,
+                        'confidence': 1.0,
+                        'method': 'word_level_fallback',
+                        'detected_keyword': clean_word
+                    })
+        else:
+            # Fallback to segment-level processing
+            text = segment.get('text', '').strip().lower()
+            if not text:
+                continue
+            
+            # Check for abuse keywords in the segment
+            text_words = text.split()
+            for i, word in enumerate(text_words):
+                clean_word = ''.join(c for c in word if c.isalnum())
+                if clean_word in abuse_keywords:
+                    # Estimate word timing within segment
+                    segment_duration = segment.get('end', 0) - segment.get('start', 0)
+                    word_duration = segment_duration / len(text_words)
+                    word_start = segment.get('start', 0) + (i * word_duration)
+                    word_end = word_start + word_duration
+                    
+                    abusive_segments.append({
+                        'start': word_start,
+                        'end': word_end,
+                        'text': word,
+                        'is_abusive': True,
+                        'confidence': 1.0,
+                        'method': 'segment_word_estimation',
+                        'detected_keyword': clean_word
+                    })
     
     return abusive_segments
 

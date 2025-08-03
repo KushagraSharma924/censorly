@@ -384,3 +384,101 @@ def validate_video_file(video_path: str) -> bool:
         return True
     except:
         return False
+
+
+def apply_beep_to_video(video_path: str, segments: List[Dict[str, Any]], output_path: str) -> int:
+    """
+    Apply beep censoring to video segments by processing audio and merging back.
+    
+    Args:
+        video_path (str): Path to the input video file
+        segments (List[Dict]): List of segments to censor with start/end times
+        output_path (str): Path to save the censored video
+    
+    Returns:
+        int: Number of segments censored
+    """
+    try:
+        if not segments:
+            # Copy original file if no processing needed
+            import shutil
+            shutil.copy2(video_path, output_path)
+            return 0
+        
+        print(f"Applying beep censoring to video with {len(segments)} segments...")
+        
+        # Create temporary files
+        temp_dir = Path(output_path).parent
+        temp_audio = temp_dir / "temp_audio.wav"
+        temp_censored_audio = temp_dir / "temp_censored_audio.wav"
+        
+        try:
+            # Step 1: Extract audio from video
+            extract_audio(video_path, str(temp_audio))
+            
+            # Step 2: Apply beep censoring to audio
+            apply_beep(str(temp_audio), segments, str(temp_censored_audio))
+            
+            # Step 3: Merge censored audio back with video
+            merge_audio_to_video(video_path, str(temp_censored_audio), output_path)
+            
+            print(f"✅ Video with beep censoring saved to: {output_path}")
+            return len(segments)
+            
+        finally:
+            # Clean up temporary files
+            for temp_file in [temp_audio, temp_censored_audio]:
+                if temp_file.exists():
+                    temp_file.unlink()
+        
+    except Exception as e:
+        raise Exception(f"Error during video beep censoring: {e}")
+
+
+def apply_mute_to_video(video_path: str, segments: List[Dict[str, Any]], output_path: str) -> int:
+    """
+    Apply mute censoring to video segments by processing audio and merging back.
+    
+    Args:
+        video_path (str): Path to the input video file
+        segments (List[Dict]): List of segments to censor with start/end times
+        output_path (str): Path to save the censored video
+    
+    Returns:
+        int: Number of segments censored
+    """
+    try:
+        if not segments:
+            # Copy original file if no processing needed
+            import shutil
+            shutil.copy2(video_path, output_path)
+            return 0
+        
+        print(f"Applying mute censoring to video with {len(segments)} segments...")
+        
+        # Create temporary files
+        temp_dir = Path(output_path).parent
+        temp_audio = temp_dir / "temp_audio.wav"
+        temp_censored_audio = temp_dir / "temp_censored_audio.wav"
+        
+        try:
+            # Step 1: Extract audio from video
+            extract_audio(video_path, str(temp_audio))
+            
+            # Step 2: Apply mute censoring to audio
+            apply_mute(str(temp_audio), segments, str(temp_censored_audio))
+            
+            # Step 3: Merge censored audio back with video
+            merge_audio_to_video(video_path, str(temp_censored_audio), output_path)
+            
+            print(f"✅ Video with mute censoring saved to: {output_path}")
+            return len(segments)
+            
+        finally:
+            # Clean up temporary files
+            for temp_file in [temp_audio, temp_censored_audio]:
+                if temp_file.exists():
+                    temp_file.unlink()
+        
+    except Exception as e:
+        raise Exception(f"Error during video mute censoring: {e}")

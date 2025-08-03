@@ -12,7 +12,19 @@ from flask import request, jsonify, send_file
 from werkzeug.utils import secure_filename
 import logging
 
-from video_processor import process_video, get_supported_modes, estimate_processing_time
+# Note: video_processor module not available, using fallback
+try:
+    from video_processor_v2 import process_video_ai
+    def process_video(*args, **kwargs):
+        return process_video_ai(*args, **kwargs)
+    def get_supported_modes():
+        return ['beep', 'mute', 'cut-scene']
+    def estimate_processing_time(file_size):
+        return min(60, max(10, file_size / 1000000))  # Simple estimation
+except ImportError:
+    process_video = None
+    get_supported_modes = None
+    estimate_processing_time = None
 
 logger = logging.getLogger(__name__)
 

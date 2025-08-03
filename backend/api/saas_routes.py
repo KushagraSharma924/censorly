@@ -71,6 +71,26 @@ def get_current_user(use_api_key=False):
         return None
 
 
+def get_whisper_model_for_tier(subscription_tier):
+    """
+    Determine the appropriate Whisper model based on subscription tier.
+    
+    Args:
+        subscription_tier (str): User's subscription tier
+        
+    Returns:
+        str: Whisper model name ('base', 'medium', or 'large')
+    """
+    tier_to_model = {
+        'free': 'base',
+        'basic': 'medium', 
+        'pro': 'large',
+        'enterprise': 'large'
+    }
+    
+    return tier_to_model.get(subscription_tier, 'base')
+
+
 @api_bp.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint."""
@@ -120,6 +140,12 @@ def upload_video():
                     form_dict['languages'] = ['auto']  # fallback
             
             form_data = schema.load(form_dict)
+            
+            # Override whisper model based on user's subscription tier
+            subscription_whisper_model = get_whisper_model_for_tier(user.subscription_tier)
+            form_data['whisper_model'] = subscription_whisper_model
+            current_app.logger.info(f"User tier: {user.subscription_tier}, Using Whisper model: {subscription_whisper_model}")
+            
         except ValidationError as err:
             return jsonify({'error': 'Validation failed', 'details': err.messages}), 400
         

@@ -99,15 +99,15 @@ def select_whisper_model_for_content(audio_path: str, default_model: str = "base
         return default_model
 
 
-def transcribe_with_whisper(audio_path: str, model_name: str = "auto") -> Dict[str, Any]:
+def transcribe_with_whisper(audio_path: str, model_name: str = "base") -> Dict[str, Any]:
     """
     Transcribe audio using OpenAI Whisper with word-level timestamps.
-    Automatically selects the best model based on language detection.
+    Uses the specified model without automatic upgrades to respect subscription tiers.
     
     Args:
         audio_path (str): Path to the audio file
-        model_name (str): Whisper model to use. Use "auto" for automatic selection,
-                         or specify "base", "small", "medium", "large"
+        model_name (str): Whisper model to use ("base", "small", "medium", "large")
+                         Note: "auto" is deprecated to enforce subscription-based model selection
     
     Returns:
         Dict containing transcription with segments and word-level timestamps
@@ -119,19 +119,14 @@ def transcribe_with_whisper(audio_path: str, model_name: str = "auto") -> Dict[s
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
         
-        # Determine which model to use
+        # Use the specified model - no automatic upgrades to respect subscription tiers
         if model_name == "auto":
-            # Try the comprehensive detection first
-            try:
-                selected_model = select_whisper_model_for_content(audio_path)
-            except Exception as e:
-                print(f"⚠️ Advanced detection failed: {e}")
-                print("🔄 Falling back to filename-based detection...")
-                selected_model = force_medium_for_hindi(audio_path)
+            print("⚠️ 'auto' model deprecated - using 'base' to respect subscription limits")
+            selected_model = "base"
         else:
             selected_model = model_name
         
-        print(f"🤖 Loading Whisper model: {selected_model}")
+        print(f"🤖 Loading Whisper model: {selected_model} (subscription-based)")
         model = whisper.load_model(selected_model)
         
         print("🎵 Starting full transcription...")

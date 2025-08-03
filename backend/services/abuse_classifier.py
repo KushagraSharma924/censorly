@@ -284,6 +284,12 @@ class AbuseClassifier:
         
         return results
 
+    def get_model_info(self) -> str:
+        """Get information about the loaded model."""
+        if not self.is_loaded:
+            return "No model loaded"
+        return f"{self.model_type} model from {self.model_path}"
+
 
 def load_classifier(model_path: Optional[str] = None) -> AbuseClassifier:
     """

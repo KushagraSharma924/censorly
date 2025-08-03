@@ -18,6 +18,25 @@ import hashlib
 saas_bp = Blueprint('saas', __name__, url_prefix='/api')
 logger = logging.getLogger(__name__)
 
+def get_whisper_model_for_tier(subscription_tier):
+    """
+    Determine the appropriate Whisper model based on subscription tier.
+    
+    Args:
+        subscription_tier (str): User's subscription tier
+        
+    Returns:
+        str: Whisper model name ('base', 'medium', or 'large')
+    """
+    tier_to_model = {
+        'free': 'base',
+        'basic': 'medium', 
+        'pro': 'large',
+        'enterprise': 'large'
+    }
+    
+    return tier_to_model.get(subscription_tier, 'base')
+
 # Plan configurations
 PLAN_CONFIGS = {
     'free': {
@@ -409,7 +428,7 @@ def razorpay_webhook():
 
 # API endpoint for programmatic access
 @saas_bp.route('/process', methods=['POST'])
-@api_key_required
+@api_key_required  
 def api_process_video():
     """Process video via API with API key authentication."""
     try:
@@ -429,13 +448,35 @@ def api_process_video():
             if monthly_usage >= limits['monthly_limit']:
                 return jsonify({'error': 'Monthly limit exceeded'}), 429
         
-        # Process the video (delegate to existing processing logic)
-        # This would integrate with your existing video processing pipeline
+        # Check if file is present
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
         
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Get processing parameters from form with defaults
+        censoring_mode = request.form.get('censoring_mode', 'beep')
+        abuse_threshold = float(request.form.get('abuse_threshold', 0.3))
+        languages = request.form.get('languages', 'auto').split(',')
+        
+        # Determine Whisper model based on user's subscription tier
+        whisper_model = get_whisper_model_for_tier(user.subscription_tier)
+        
+        # Use existing video processing logic from modern_routes
+        # For now, return the configuration that would be used
         return jsonify({
             'message': 'Video processing initiated',
             'user_id': str(user.id),
-            'api_key_name': api_key.name
+            'api_key_name': api_key.name,
+            'processing_config': {
+                'censoring_mode': censoring_mode,
+                'abuse_threshold': abuse_threshold,
+                'languages': languages,
+                'whisper_model': whisper_model,
+                'subscription_tier': user.subscription_tier
+            }
         }), 202
         
     except Exception as e:

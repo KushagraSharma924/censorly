@@ -139,6 +139,34 @@ const Dashboard: React.FC = () => {
     setRefreshing(false);
   };
 
+  const downloadFile = async (jobId: string, filename: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/api/download/${jobId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `processed_${filename}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Download failed:', response.statusText);
+        alert('Download failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Download failed. Please check your connection and try again.');
+    }
+  };
+
   const createAPIKey = async () => {
     if (!newApiKeyName.trim()) {
       return;
@@ -380,12 +408,14 @@ const Dashboard: React.FC = () => {
                           <Badge className={getStatusColor(job.status)}>
                             {job.status}
                           </Badge>
-                          {job.status === 'completed' && job.result_url && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={job.result_url} download>
-                                <Download className="h-4 w-4 mr-2" />
-                                Download
-                              </a>
+                          {job.status === 'completed' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => downloadFile(job.id, job.filename)}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
                             </Button>
                           )}
                           {job.status === 'completed' && (

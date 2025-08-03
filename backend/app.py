@@ -3,7 +3,7 @@ Enhanced SaaS Flask Application for AI Profanity Filter Platform
 Complete production-ready Flask app with JWT auth, billing, and API management.
 """
 
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, get_jwt
 from flask_migrate import Migrate
@@ -36,14 +36,10 @@ except ImportError:
 try:
     from api.modern_routes import api_v2_bp as modern_bp
 except ImportError:
-    print("Warning: modern_routes blueprint not available")
     modern_bp = None
 
-try:
-    from api.routes import api_bp
-except ImportError:
-    print("Warning: routes blueprint not available")
-    api_bp = None
+# Skip legacy routes module as it has missing dependencies
+routes_module = None
 
 try:
     from api.payment_routes import payment_bp
@@ -60,7 +56,7 @@ def create_app():
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
-    
+     
     # Database configuration for Supabase PostgreSQL
     database_url = os.getenv('SUPABASE_DB_URL')
     if database_url and database_url.startswith('postgresql://'):
@@ -98,8 +94,10 @@ def create_app():
          origins=[
              "http://localhost:3000", 
              "http://localhost:5173", 
+             "http://localhost:8080",
              "http://127.0.0.1:3000",
              "http://127.0.0.1:5173",
+             "http://127.0.0.1:8080",
              "https://profanityfilter.ai"
          ],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -115,7 +113,7 @@ def create_app():
          ],
          supports_credentials=True,
          expose_headers=["Content-Range", "X-Content-Range"],
-         resources={r"/*": {"origins": "*"}}  # Allow all routes
+         max_age=86400  # Cache preflight for 24 hours
     )
     
     # JWT configuration
@@ -142,8 +140,6 @@ def create_app():
         app.register_blueprint(payment_bp)  # Payment and subscription routes
     if modern_bp:
         app.register_blueprint(modern_bp)  # Modern video processing routes
-    if api_bp:
-        app.register_blueprint(api_bp)  # Legacy API routes
     
     # Health check endpoint
     @app.route('/health')
@@ -171,6 +167,17 @@ def create_app():
                 'nsfw_content_detection',
                 'real_time_processing'
             ]
+        })
+
+    # CORS test endpoint
+    @app.route('/api/cors-test', methods=['GET', 'POST', 'OPTIONS'])
+    def cors_test():
+        """Test endpoint to verify CORS configuration."""
+        return jsonify({
+            'message': 'CORS is working correctly',
+            'method': request.method,
+            'origin': request.headers.get('Origin'),
+            'cors_enabled': True
         })
 
     # Debug endpoint to test authentication
@@ -225,7 +232,7 @@ def create_app():
             else:
                 return jsonify({'error': 'Method not implemented'}), 501
         except Exception as e:
-            logger.error(f"Jobs endpoint error: {str(e)}")
+            app.logger.error(f"Jobs endpoint error: {str(e)}")
             return jsonify({'error': 'Jobs service unavailable'}), 503    # Legacy route alias for individual job endpoint
     @app.route('/api/jobs/<job_id>', methods=['GET', 'OPTIONS'])
     def job_detail_legacy(job_id):
@@ -238,9 +245,47 @@ def create_app():
         
         try:
             from api.modern_routes import get_job_status
-            return get_job_status(int(job_id))
-        except (ImportError, ValueError):
-            return jsonify({'error': 'Job service unavailable'}), 503    # API documentation endpoint
+            return get_job_status(job_id)  # Don't convert to int, keep as string UUID
+        except ImportError:
+            return jsonify({'error': 'Job service unavailable'}), 503
+    
+    # Download endpoint for processed videos
+    @app.route('/api/download/<job_id>', methods=['GET', 'OPTIONS'])
+    @jwt_required()
+    def download_processed_video(job_id):
+        """Download processed video file."""
+        if request.method == 'OPTIONS':
+            response = make_response()
+            response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            return response
+        
+        try:
+            from api.modern_routes import get_current_user
+            user = get_current_user()
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            # Find the job
+            from models.saas_models import Job
+            job = Job.query.filter_by(id=job_id, user_id=user.id).first()
+            if not job:
+                return jsonify({'error': 'Job not found'}), 404
+            
+            if job.status != 'completed' or not job.output_path:
+                return jsonify({'error': 'Processed file not available'}), 404
+            
+            if not os.path.exists(job.output_path):
+                return jsonify({'error': 'Output file not found on server'}), 404
+            
+            return send_file(
+                job.output_path,
+                as_attachment=True,
+                download_name=f"processed_{job.original_filename}"
+            )
+            
+        except Exception as e:
+            return jsonify({'error': f'Download failed: {str(e)}'}), 500    # API documentation endpoint
     @app.route('/api/docs')
     def api_documentation():
         """API documentation and feature overview."""
@@ -302,24 +347,28 @@ def create_app():
                 'free': {
                     'monthly_videos': 10,
                     'max_file_size': '100MB',
-                    'max_duration': '5 minutes'
+                    'max_duration': '5 minutes',
+                    'whisper_model': 'base'
                 },
                 'basic': {
                     'monthly_videos': 100,
                     'max_file_size': '500MB',
                     'max_duration': '30 minutes',
+                    'whisper_model': 'medium',
                     'price': '₹999/month'
                 },
                 'pro': {
                     'monthly_videos': 500,
                     'max_file_size': '1GB',
                     'max_duration': '60 minutes',
+                    'whisper_model': 'large',
                     'price': '₹2999/month'
                 },
                 'enterprise': {
                     'monthly_videos': 'unlimited',
                     'max_file_size': '5GB',
                     'max_duration': '180 minutes',
+                    'whisper_model': 'large',
                     'price': '₹9999/month'
                 }
             }

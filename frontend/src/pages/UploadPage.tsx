@@ -59,16 +59,24 @@ const UploadPage: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        updateFileStatus(fileData.id, 'failed', 'Not authenticated. Please log in.');
+        updateFileStatus(fileData.id, 'failed', 'Not authenticated - please login first');
         return;
       }
 
+      console.log('Starting upload for:', fileData.file.name);
+      console.log('Token exists:', !!token);
+      console.log('API URL:', `${API_BASE_URL}/api/process-video`);
+
       const formData = new FormData();
       formData.append('video', fileData.file);
-      formData.append('auto_censor', uploadSettings.auto_censor.toString());
-      formData.append('profanity_level', uploadSettings.profanity_level);
-      formData.append('beep_sound', uploadSettings.beep_sound.toString());
-      if (uploadSettings.custom_wordlist.trim()) {
+      
+      // Add processing settings using the correct variable name
+      formData.append('censoring_mode', 'beep');  // Default to beep
+      formData.append('abuse_threshold', '0.7');  // Default threshold
+      formData.append('languages', JSON.stringify(['auto']));
+      // Note: whisper_model is now automatically determined by subscription tier
+
+      if (uploadSettings.custom_wordlist && uploadSettings.custom_wordlist.trim()) {
         formData.append('custom_wordlist', uploadSettings.custom_wordlist);
       }
 
@@ -83,15 +91,20 @@ const UploadPage: React.FC = () => {
       });
 
       xhr.onload = async () => {
-        if (xhr.status === 200) {
+        if (xhr.status === 200 || xhr.status === 202) {  // Accept both 200 and 202 status codes
           const response = JSON.parse(xhr.responseText);
           updateFileStatus(fileData.id, 'processing', undefined, response.job_id);
           
           // Start polling for job status
           pollJobStatus(fileData.id, response.job_id);
         } else {
-          const error = JSON.parse(xhr.responseText);
-          updateFileStatus(fileData.id, 'failed', error.error || 'Upload failed');
+          console.error('Upload failed with status:', xhr.status, xhr.responseText);
+          try {
+            const error = JSON.parse(xhr.responseText);
+            updateFileStatus(fileData.id, 'failed', error.error || `Upload failed (${xhr.status})`);
+          } catch (e) {
+            updateFileStatus(fileData.id, 'failed', `Upload failed (${xhr.status})`);
+          }
         }
       };
 
@@ -120,7 +133,7 @@ const UploadPage: React.FC = () => {
         const jobData = await response.json();
         
         if (jobData.status === 'completed') {
-          updateFileStatus(fileId, 'completed', undefined, jobId, jobData.result_url);
+          updateFileStatus(fileId, 'completed', undefined, jobId, jobData.download_url);
         } else if (jobData.status === 'failed') {
           updateFileStatus(fileId, 'failed', jobData.error_message || 'Processing failed');
         } else {
@@ -160,6 +173,34 @@ const UploadPage: React.FC = () => {
 
   const removeFile = (fileId: string) => {
     setFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  const downloadFile = async (jobId: string, filename: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/api/download/${jobId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `processed_${filename}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Download failed:', response.statusText);
+        alert('Download failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Download failed. Please check your connection and try again.');
+    }
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -306,12 +347,14 @@ const UploadPage: React.FC = () => {
                               {getStatusIcon(file.status)}
                               <span className="ml-1 capitalize">{file.status}</span>
                             </Badge>
-                            {file.status === 'completed' && file.resultUrl && (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={file.resultUrl} download>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </a>
+                            {file.status === 'completed' && file.jobId && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => downloadFile(file.jobId!, file.file.name)}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
                               </Button>
                             )}
                             <Button
