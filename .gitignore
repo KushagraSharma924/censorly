@@ -88,7 +88,7 @@ coverage/
 frontend/dist/
 frontend/build/
 backend/processed/
-backend/uploads/*
+backend/uploads/
 !backend/uploads/.gitkeep
 
 # Temporary files
@@ -103,3 +103,26 @@ backend/uploads/*
 *.avi
 *.mov
 *.webm
+
+# Machine Learning Models and Cache
+*.pkl
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.h5
+*.onnx
+*.tflite
+*.joblib
+
+# Transformer model cache
+backend/models/transformers/
+**/transformers/
+**/models--*/
+**/snapshots/
+**/blobs/
+
+# Python virtual environments (additional)
+backend/transformer_test_env/
+**/*_env/
+**/*_venv/
