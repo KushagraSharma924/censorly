@@ -407,6 +407,27 @@ def create_app():
         if request.endpoint and not request.endpoint.startswith('static'):
             app.logger.info(f"{request.method} {request.path} - {request.remote_addr}")
     
+    # Test endpoint for hybrid detector
+    @app.route('/api/test-text', methods=['POST'])
+    def test_text_detection():
+        """Test endpoint for hybrid detector - no auth required for testing."""
+        try:
+            from services.hybrid_detector import HybridAbuseDetector
+            
+            data = request.get_json()
+            if not data or 'text' not in data:
+                return jsonify({'error': 'Missing text field'}), 400
+            
+            text = data['text']
+            detector = HybridAbuseDetector()
+            result = detector.predict(text)
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            app.logger.error(f"Test endpoint error: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+    
     # Database initialization - moved to app context
     with app.app_context():
         try:

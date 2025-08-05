@@ -1,0 +1,22 @@
+{
+  "IndicBERT": {
+    "model_id": "ai4bharat/indic-bert",
+    "status": "import_error",
+    "error": "No module named 'torch'"
+  },
+  "MuRIL": {
+    "model_id": "google/muril-base-cased",
+    "status": "import_error",
+    "error": "No module named 'torch'"
+  },
+  "XLM-R": {
+    "model_id": "xlm-roberta-base",
+    "status": "import_error",
+    "error": "No module named 'torch'"
+  },
+  "DistilBERT": {
+    "model_id": "distilbert-base-multilingual-cased",
+    "status": "import_error",
+    "error": "No module named 'torch'"
+  }
+}

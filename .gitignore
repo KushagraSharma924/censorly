@@ -27,6 +27,24 @@ wheels/
 *.egg
 MANIFEST
 
+# Test files
+**/test_*.py
+**/*_test.py
+**/tests/
+test/
+tests/
+
+# Documentation (except main README)
+docs/
+*.md
+!README.md
+
+# Scripts and samples
+scripts/
+samples/
+examples/
+demo/
+
 # Environment variables
 .env
 .env.local

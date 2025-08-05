@@ -102,57 +102,6 @@ def get_whisper_model_for_tier(subscription_tier):
     return tier_to_model.get(subscription_tier, 'base')
 
 
-@api_v2_bp.route('/test-classifier', methods=['POST'])
-@api_key_required
-def test_classifier():
-    """
-    Test the abuse classifier with provided text.
-    """
-    try:
-        # Validate input
-        schema = AbuseTestSchema()
-        data = schema.load(request.json)
-        
-        text = data['text']
-        return_confidence = data['return_confidence']
-        
-        # Load classifier
-        try:
-            classifier = load_classifier()
-            result = classifier.predict(text, return_score=return_confidence)
-        except Exception as e:
-            return jsonify({
-                'error': f'Classifier not available: {str(e)}',
-                'fallback_used': True,
-                'text': text
-            }), 500
-        
-        # Format response
-        if isinstance(result, dict):
-            response = {
-                'text': text,
-                'is_abusive': result.get('is_abusive', False),
-                'confidence': result.get('confidence', 0.0),
-                'model_type': result.get('model_type', 'unknown'),
-                'timestamp': datetime.utcnow().isoformat()
-            }
-        else:
-            response = {
-                'text': text,
-                'is_abusive': bool(result),
-                'confidence': 1.0 if result else 0.0,
-                'model_type': 'simple',
-                'timestamp': datetime.utcnow().isoformat()
-            }
-        
-        return jsonify(response)
-        
-    except ValidationError as e:
-        return jsonify({'error': 'Validation error', 'details': e.messages}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 @api_v2_bp.route('/classifier-info', methods=['GET'])
 @api_key_required
 def classifier_info():
@@ -595,3 +544,258 @@ def bad_request(e):
 @api_v2_bp.errorhandler(500)
 def internal_error(e):
     return jsonify({'error': 'Internal server error'}), 500
+
+
+# V2 Hybrid Detector Endpoints
+
+@api_v2_bp.route('/detect-text', methods=['POST'])
+@jwt_required()
+def detect_text_abuse():
+    """Direct text abuse detection endpoint using hybrid detector"""
+    try:
+        data = request.get_json()
+        if not data or 'text' not in data:
+            return jsonify({'error': 'Text is required'}), 400
+        
+        text = data['text']
+        if not text or not text.strip():
+            return jsonify({'error': 'Text cannot be empty'}), 400
+        
+        # Initialize hybrid detector
+        try:
+            from services.hybrid_detector import HybridAbuseDetector
+            model_path = os.getenv('TRANSFORMER_MODEL_PATH')
+            
+            if model_path and os.path.exists(model_path):
+                detector = HybridAbuseDetector(
+                    transformer_model_path=model_path,
+                    use_transformer=True,
+                    transformer_threshold=0.75,
+                    ensemble_mode="hybrid"
+                )
+            else:
+                detector = HybridAbuseDetector(
+                    use_transformer=False,
+                    ensemble_mode="keyword_first"
+                )
+        except Exception as e:
+            current_app.logger.error(f"Failed to initialize hybrid detector: {e}")
+            return jsonify({'error': 'Detector initialization failed'}), 500
+        
+        # Get detection result
+        result = detector.predict(text, return_score=True)
+        
+        return jsonify({
+            'status': 'success',
+            'result': result,
+            'api_version': 'v2'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Text detection error: {e}")
+        return jsonify({'error': f'Detection failed: {str(e)}'}), 500
+
+
+@api_v2_bp.route('/detect-batch', methods=['POST'])
+@jwt_required()
+def detect_batch_text():
+    """Batch text abuse detection endpoint"""
+    try:
+        data = request.get_json()
+        if not data or 'texts' not in data:
+            return jsonify({'error': 'Texts array is required'}), 400
+        
+        texts = data['texts']
+        if not isinstance(texts, list) or len(texts) == 0:
+            return jsonify({'error': 'Texts must be a non-empty array'}), 400
+        
+        if len(texts) > 100:  # Limit batch size
+            return jsonify({'error': 'Maximum 100 texts per batch'}), 400
+        
+        # Initialize hybrid detector
+        try:
+            from services.hybrid_detector import HybridAbuseDetector
+            model_path = os.getenv('TRANSFORMER_MODEL_PATH')
+            
+            if model_path and os.path.exists(model_path):
+                detector = HybridAbuseDetector(
+                    transformer_model_path=model_path,
+                    use_transformer=True,
+                    transformer_threshold=0.75,
+                    ensemble_mode="hybrid"
+                )
+            else:
+                detector = HybridAbuseDetector(
+                    use_transformer=False,
+                    ensemble_mode="keyword_first"
+                )
+        except Exception as e:
+            current_app.logger.error(f"Failed to initialize hybrid detector: {e}")
+            return jsonify({'error': 'Detector initialization failed'}), 500
+        
+        # Process batch
+        results = detector.predict_batch(texts)
+        
+        return jsonify({
+            'status': 'success',
+            'results': results,
+            'count': len(results),
+            'api_version': 'v2'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Batch detection error: {e}")
+        return jsonify({'error': f'Batch detection failed: {str(e)}'}), 500
+
+
+@api_v2_bp.route('/model-info', methods=['GET'])
+@jwt_required()
+def get_model_info():
+    """Get information about the current abuse detection model"""
+    try:
+        from services.hybrid_detector import HybridAbuseDetector
+        model_path = os.getenv('TRANSFORMER_MODEL_PATH')
+        
+        if model_path and os.path.exists(model_path):
+            detector = HybridAbuseDetector(
+                transformer_model_path=model_path,
+                use_transformer=True,
+                transformer_threshold=0.75,
+                ensemble_mode="hybrid"
+            )
+        else:
+            detector = HybridAbuseDetector(
+                use_transformer=False,
+                ensemble_mode="keyword_first"
+            )
+        
+        model_info = detector.get_model_info()
+        stats = detector.get_stats()
+        
+        return jsonify({
+            'status': 'success',
+            'model_info': model_info,
+            'stats': stats,
+            'api_version': 'v2'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Model info error: {e}")
+        return jsonify({'error': f'Failed to get model info: {str(e)}'}), 500
+
+
+@api_v2_bp.route('/benchmark', methods=['POST'])
+@jwt_required()
+def benchmark_detector():
+    """Benchmark the abuse detector with test texts"""
+    try:
+        data = request.get_json() or {}
+        test_texts = data.get('test_texts', [
+            "This is a normal sentence.",
+            "This is fucking terrible!",
+            "You are so stupid and annoying.",
+            "Great work on this project!",
+            "Tu chutiya hai yaar",
+            "Bahut accha kaam kiya hai"
+        ])
+        
+        if len(test_texts) > 50:  # Limit for benchmarking
+            return jsonify({'error': 'Maximum 50 texts for benchmarking'}), 400
+        
+        from services.hybrid_detector import HybridAbuseDetector
+        model_path = os.getenv('TRANSFORMER_MODEL_PATH')
+        
+        if model_path and os.path.exists(model_path):
+            detector = HybridAbuseDetector(
+                transformer_model_path=model_path,
+                use_transformer=True,
+                transformer_threshold=0.75,
+                ensemble_mode="hybrid"
+            )
+        else:
+            detector = HybridAbuseDetector(
+                use_transformer=False,
+                ensemble_mode="keyword_first"
+            )
+        
+        # Run benchmark
+        import time
+        start_time = time.time()
+        
+        results = []
+        for text in test_texts:
+            result = detector.predict(text, return_score=True)
+            results.append(result)
+        
+        total_time = time.time() - start_time
+        avg_time = (total_time / len(test_texts)) * 1000  # Convert to ms
+        
+        stats = detector.get_stats()
+        
+        return jsonify({
+            'status': 'success',
+            'benchmark_results': results,
+            'performance': {
+                'total_time_ms': total_time * 1000,
+                'avg_time_per_text_ms': avg_time,
+                'texts_processed': len(test_texts)
+            },
+            'detector_stats': stats,
+            'api_version': 'v2'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Benchmark error: {e}")
+        return jsonify({'error': f'Benchmark failed: {str(e)}'}), 500
+
+
+@api_v2_bp.route('/health-detector', methods=['GET'])
+def health_check_detector():
+    """Health check for v2 API with model status"""
+    try:
+        from services.hybrid_detector import HybridAbuseDetector
+        
+        # Try to initialize detector
+        model_path = os.getenv('TRANSFORMER_MODEL_PATH')
+        detector_status = "keyword_only"
+        
+        try:
+            if model_path and os.path.exists(model_path):
+                detector = HybridAbuseDetector(
+                    transformer_model_path=model_path,
+                    use_transformer=True,
+                    transformer_threshold=0.75,
+                    ensemble_mode="hybrid"
+                )
+                detector_status = "transformer_hybrid"
+            else:
+                detector = HybridAbuseDetector(
+                    use_transformer=False,
+                    ensemble_mode="keyword_first"
+                )
+            
+            # Test with a simple prediction
+            test_result = detector.predict("test", return_score=False)
+            model_working = test_result is not None
+            
+        except Exception as e:
+            current_app.logger.error(f"Health check detector error: {e}")
+            model_working = False
+        
+        return jsonify({
+            'status': 'healthy',
+            'api_version': 'v2',
+            'detector_status': detector_status,
+            'model_working': model_working,
+            'transformer_model_path': model_path if model_path else None,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Health check error: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'api_version': 'v2',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500

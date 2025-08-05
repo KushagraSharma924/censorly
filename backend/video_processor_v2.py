@@ -97,19 +97,36 @@ def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None,
         segments = transcription_result['segments']
         print(f"📝 Found {len(segments)} transcription segments")
         
-        # Load abuse classifier
-        print("🧠 Loading abuse classifier...")
+        # Load hybrid abuse detector
+        print("🧠 Loading hybrid abuse detector...")
         try:
-            classifier = load_classifier()
-            print(f"✅ Classifier loaded: {classifier.get_model_info()}")
+            from services.hybrid_detector import HybridAbuseDetector
+            # Try to load with transformer first
+            model_path = os.getenv('TRANSFORMER_MODEL_PATH')
+            if model_path and os.path.exists(model_path):
+                detector = HybridAbuseDetector(
+                    transformer_model_path=model_path,
+                    use_transformer=True,
+                    transformer_threshold=0.75,
+                    ensemble_mode="hybrid"
+                )
+                print(f"✅ Hybrid detector loaded with transformer: {model_path}")
+            else:
+                # Fallback to keyword-only mode
+                detector = HybridAbuseDetector(
+                    use_transformer=False,
+                    ensemble_mode="keyword_first"
+                )
+                print("✅ Hybrid detector loaded in keyword-only mode")
         except Exception as e:
-            print(f"⚠️  Could not load classifier: {e}")
-            print("📦 Using fallback detection...")
-            classifier = None
+            print(f"⚠️  Could not load hybrid detector: {e}")
+            print("📦 Using legacy fallback detection...")
+            from services.abuse_classifier import load_classifier
+            detector = load_classifier()
         
-        # Detect abusive segments using the new classifier
+        # Detect abusive segments using the hybrid detector
         print("🔍 Detecting abusive words...")
-        abusive_segments = detect_abusive_segments(segments, classifier, abuse_threshold)
+        abusive_segments = detect_abusive_segments(segments, detector, abuse_threshold)
         
         results['abusive_segments'] = abusive_segments
         print(f"🚨 Found {len(abusive_segments)} abusive words")
@@ -174,14 +191,14 @@ def process_video(input_path: str, mode: str, temp_dir: Optional[str] = None,
 
 
 def detect_abusive_segments(segments: List[Dict[str, Any]], 
-                          classifier, 
+                          detector, 
                           threshold: float = 0.7) -> List[Dict[str, Any]]:
     """
     Detect abusive words (not entire segments) using word-level timestamps.
     
     Args:
         segments: List of transcription segments from Whisper
-        classifier: The abuse classifier instance
+        detector: The hybrid abuse detector instance
         threshold: Confidence threshold for abuse detection
     
     Returns:
@@ -189,8 +206,8 @@ def detect_abusive_segments(segments: List[Dict[str, Any]],
     """
     abusive_segments = []
     
-    if classifier is None:
-        print("⚠️  No classifier available, using word-level fallback detection")
+    if detector is None:
+        print("⚠️  No detector available, using word-level fallback detection")
         return _fallback_word_level_detection(segments)
     
     try:
@@ -198,70 +215,53 @@ def detect_abusive_segments(segments: List[Dict[str, Any]],
             # Check if segment has word-level timestamps
             words = segment.get('words', [])
             if not words:
-                # Fallback to segment-level if no word timestamps
-                text = segment.get('text', '').strip()
-                if text and classifier:
-                    result = classifier.predict(text, return_score=True)
-                    if _is_abusive_result(result, threshold):
-                        abusive_segments.append({
-                            'start': segment.get('start', 0),
-                            'end': segment.get('end', 0),
-                            'text': text,
-                            'is_abusive': True,
-                            'confidence': _get_confidence(result),
-                            'method': 'segment_level'
-                        })
-                continue
+                # Fallback: treat entire segment as one word
+                words = [{
+                    'word': segment['text'],
+                    'start': segment['start'],
+                    'end': segment['end']
+                }]
             
-            # Process each word individually
-            for word_data in words:
-                word_text = word_data.get('word', '').strip()
+            # Check each word for abuse
+            for word_info in words:
+                word_text = word_info['word'].strip()
                 if not word_text:
                     continue
                 
-                # Get prediction for individual word
-                result = classifier.predict(word_text, return_score=True)
+                # Use hybrid detector to check word
+                try:
+                    # Check if using new hybrid detector
+                    if hasattr(detector, 'predict'):
+                        result = detector.predict(word_text, return_score=False)
+                        is_abusive = result['is_abusive']
+                        confidence = result['confidence']
+                    else:
+                        # Legacy classifier
+                        prediction = detector.predict([word_text])
+                        confidence = prediction[0] if prediction else 0.0
+                        is_abusive = confidence >= threshold
+                    
+                    if is_abusive and confidence >= threshold:
+                        abusive_word = {
+                            'word': word_text,
+                            'start': word_info['start'],
+                            'end': word_info['end'],
+                            'confidence': confidence,
+                            'segment_id': segment.get('id', len(abusive_segments))
+                        }
+                        abusive_segments.append(abusive_word)
+                        print(f"🚨 Detected abusive word: '{word_text}' at {word_info['start']:.2f}s (confidence: {confidence:.3f})")
                 
-                if _is_abusive_result(result, threshold):
-                    abusive_segments.append({
-                        'start': word_data.get('start', 0),
-                        'end': word_data.get('end', 0),
-                        'text': word_text,
-                        'is_abusive': True,
-                        'confidence': _get_confidence(result),
-                        'method': 'word_level'
-                    })
-    
+                except Exception as e:
+                    print(f"⚠️  Error processing word '{word_text}': {e}")
+                    continue
+        
+        return abusive_segments
+        
     except Exception as e:
-        print(f"❌ Classifier error: {e}")
-        print("📦 Using word-level fallback detection...")
+        print(f"❌ Error in abuse detection: {e}")
+        print("📦 Falling back to word-level detection...")
         return _fallback_word_level_detection(segments)
-    
-    # If classifier found nothing, also try fallback detection as a safety net
-    if len(abusive_segments) == 0:
-        print("📦 No classifier detections, trying word-level fallback detection...")
-        fallback_segments = _fallback_word_level_detection(segments)
-        if fallback_segments:
-            print(f"✅ Fallback detected {len(fallback_segments)} abusive words")
-            return fallback_segments
-    
-    return abusive_segments
-
-
-def _is_abusive_result(result, threshold: float) -> bool:
-    """Check if classifier result indicates abuse above threshold."""
-    if isinstance(result, dict):
-        is_abusive = result.get('is_abusive', False)
-        confidence = result.get('confidence', 0.0)
-        return is_abusive and confidence >= threshold
-    return bool(result)
-
-
-def _get_confidence(result) -> float:
-    """Extract confidence score from classifier result."""
-    if isinstance(result, dict):
-        return result.get('confidence', 1.0)
-    return 1.0
 
 
 def _fallback_word_level_detection(segments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

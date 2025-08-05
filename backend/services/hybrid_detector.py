@@ -1,19 +1,22 @@
 """
-Hybrid profanity detection combining regex patterns and transformer models.
-Provides fallback mechanism and ensemble predictions for production use.
+Hybrid abuse detection combining transformer models and keyword matching.
+Production-ready multilingual detection for Hindi, Hinglish, and English.
 """
 
 import logging
+import re
+import os
 from typing import Dict, List, Any, Optional, Tuple, Union
 from pathlib import Path
 import time
+import threading
 
 logger = logging.getLogger(__name__)
 
-class HybridProfanityDetector:
+class HybridAbuseDetector:
     """
-    Hybrid detector that combines regex-based and transformer-based approaches.
-    Provides fast regex detection with transformer verification for accuracy.
+    Production-grade hybrid detector combining transformer and keyword detection.
+    Optimized for multilingual abuse detection with fallback mechanisms.
     """
     
     def __init__(
@@ -21,123 +24,92 @@ class HybridProfanityDetector:
         transformer_model_path: Optional[str] = None,
         use_transformer: bool = True,
         transformer_threshold: float = 0.7,
-        ensemble_mode: str = "fast_first"  # "fast_first", "both", "transformer_only"
+        keyword_confidence: float = 0.9,
+        ensemble_mode: str = "hybrid"  # "hybrid", "transformer_first", "keyword_first"
     ):
         """
         Initialize hybrid detector.
         
         Args:
-            transformer_model_path: Path to transformer model
+            transformer_model_path: Path to fine-tuned transformer model
             use_transformer: Whether to use transformer model
             transformer_threshold: Confidence threshold for transformer
+            keyword_confidence: Fixed confidence for keyword matches
             ensemble_mode: How to combine predictions
-                - "fast_first": Use regex first, transformer for verification
-                - "both": Use both and combine results
-                - "transformer_only": Use only transformer
         """
         self.use_transformer = use_transformer
         self.transformer_threshold = transformer_threshold
+        self.keyword_confidence = keyword_confidence
         self.ensemble_mode = ensemble_mode
         
-        # Initialize regex scanner
-        try:
-            from .profanity_scanner import get_scanner
-            self.regex_scanner = get_scanner()
-            self.regex_available = True
-            logger.info("✅ Regex scanner initialized")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize regex scanner: {e}")
-            self.regex_scanner = None
-            self.regex_available = False
-        
-        # Initialize transformer classifier
+        # Initialize transformer
         self.transformer_classifier = None
         self.transformer_available = False
         
-        if use_transformer and transformer_model_path:
+        if use_transformer:
             try:
-                from .transformer_classifier import TransformerInference
-                self.transformer_classifier = TransformerInference(
-                    transformer_model_path, 
-                    transformer_threshold
-                )
-                self.transformer_available = True
-                logger.info("✅ Transformer classifier initialized")
+                from .transformer_inference import TransformerAbuseDetector
+                
+                # Use specific model if provided, otherwise use IndicBERT
+                if transformer_model_path and os.path.exists(transformer_model_path):
+                    # Load custom fine-tuned model
+                    logger.info(f"Loading custom transformer model from: {transformer_model_path}")
+                    self.transformer_classifier = TransformerAbuseDetector(
+                        model_name=transformer_model_path,
+                        confidence_threshold=transformer_threshold
+                    )
+                else:
+                    # Use pre-trained IndicBERT for multilingual support
+                    logger.info("Loading pre-trained IndicBERT model for multilingual detection")
+                    self.transformer_classifier = TransformerAbuseDetector(
+                        model_name="ai4bharat/indic-bert",
+                        confidence_threshold=transformer_threshold
+                    )
+                
+                # Test load to verify it works
+                if self.transformer_classifier.load_model():
+                    self.transformer_available = True
+                    logger.info("✅ Transformer model loaded successfully")
+                else:
+                    logger.warning("❌ Failed to load transformer model, using keyword-only mode")
+                    self.transformer_classifier = None
+                    
+            except ImportError as e:
+                logger.error(f"❌ Transformer dependencies not available: {e}")
+                logger.info("   Falling back to keyword-only mode")
             except Exception as e:
-                logger.error(f"❌ Failed to initialize transformer: {e}")
-                logger.info("   Falling back to regex-only mode")
+                logger.error(f"❌ Transformer initialization failed: {e}")
+                logger.info("   Falling back to keyword-only detection")
+        
+        # Initialize keyword detector
+        self.keyword_detector = KeywordAbuseDetector()
         
         # Performance tracking
         self.stats = {
             'total_predictions': 0,
-            'regex_predictions': 0,
             'transformer_predictions': 0,
+            'keyword_predictions': 0,
             'hybrid_agreements': 0,
             'hybrid_disagreements': 0,
-            'avg_regex_time': 0.0,
             'avg_transformer_time': 0.0,
-            'avg_total_time': 0.0
+            'avg_keyword_time': 0.0,
+            'avg_total_time': 0.0,
+            'cache_hits': 0
         }
         
+        # Thread safety
+        self._lock = threading.Lock()
+        
         logger.info(f"Hybrid detector initialized - Mode: {ensemble_mode}")
-        logger.info(f"Available methods: Regex={self.regex_available}, Transformer={self.transformer_available}")
+        logger.info(f"Transformer available: {self.transformer_available}")
     
-    def _predict_regex(self, text: str) -> Dict[str, Any]:
-        """Get regex-based prediction."""
-        if not self.regex_available:
-            return {'is_abusive': False, 'confidence': 0.0, 'method': 'regex', 'words': []}
-        
-        start_time = time.time()
-        
-        try:
-            is_abusive = self.regex_scanner.is_abusive(text)
-            matches = self.regex_scanner.find_profanity_matches(text)
-            words = [match['word'] for match in matches]
-            
-            # Confidence based on number of matches
-            confidence = min(1.0, len(words) * 0.5 + 0.5) if is_abusive else 0.0
-            
-            inference_time = (time.time() - start_time) * 1000
-            
-            return {
-                'is_abusive': is_abusive,
-                'confidence': confidence,
-                'words': words,
-                'matches': matches,
-                'method': 'regex',
-                'inference_time_ms': inference_time
-            }
-            
-        except Exception as e:
-            logger.error(f"Regex prediction failed: {e}")
-            return {'is_abusive': False, 'confidence': 0.0, 'method': 'regex', 'words': []}
-    
-    def _predict_transformer(self, text: str) -> Dict[str, Any]:
-        """Get transformer-based prediction."""
-        if not self.transformer_available:
-            return {'is_abusive': False, 'confidence': 0.0, 'method': 'transformer'}
-        
-        try:
-            result = self.transformer_classifier.predict(text)
-            return {
-                'is_abusive': result['is_abusive'],
-                'confidence': result['confidence'],
-                'label': result['label'],
-                'method': 'transformer',
-                'inference_time_ms': result['inference_time_ms'],
-                'normalized_text': result.get('normalized_text', text)
-            }
-            
-        except Exception as e:
-            logger.error(f"Transformer prediction failed: {e}")
-            return {'is_abusive': False, 'confidence': 0.0, 'method': 'transformer'}
-    
-    def predict(self, text: str) -> Dict[str, Any]:
+    def predict(self, text: str, return_score: bool = True) -> Dict[str, Any]:
         """
-        Make hybrid prediction.
+        Make hybrid prediction combining transformer and keyword detection.
         
         Args:
             text: Input text
+            return_score: Whether to return detailed scores
             
         Returns:
             Combined prediction result
@@ -147,291 +119,423 @@ class HybridProfanityDetector:
                 'text': text,
                 'is_abusive': False,
                 'confidence': 0.0,
-                'method': 'none',
-                'predictions': {}
+                'method': 'none'
             }
         
         start_time = time.time()
-        predictions = {}
+        text = text.strip()
         
-        # Update stats
-        self.stats['total_predictions'] += 1
+        with self._lock:
+            self.stats['total_predictions'] += 1
         
-        if self.ensemble_mode == "transformer_only":
-            # Use only transformer
-            transformer_result = self._predict_transformer(text)
-            predictions['transformer'] = transformer_result
-            
-            final_result = {
-                'text': text,
-                'is_abusive': transformer_result['is_abusive'],
-                'confidence': transformer_result['confidence'],
-                'method': 'transformer_only',
-                'predictions': predictions
-            }
-            
-        elif self.ensemble_mode == "fast_first":
-            # Use regex first, transformer for verification if needed
-            regex_result = self._predict_regex(text)
-            predictions['regex'] = regex_result
-            self.stats['regex_predictions'] += 1
-            
-            if regex_result['is_abusive']:
-                # Regex detected abuse, verify with transformer if available
-                if self.transformer_available:
-                    transformer_result = self._predict_transformer(text)
-                    predictions['transformer'] = transformer_result
-                    self.stats['transformer_predictions'] += 1
-                    
-                    # Combine results - both must agree for high confidence
-                    if transformer_result['is_abusive']:
-                        # Both agree on abusive
-                        final_is_abusive = True
-                        final_confidence = min(1.0, (regex_result['confidence'] + transformer_result['confidence']) / 2)
-                        self.stats['hybrid_agreements'] += 1
-                    else:
-                        # Disagreement - use transformer with lower confidence
-                        final_is_abusive = transformer_result['is_abusive']
-                        final_confidence = transformer_result['confidence'] * 0.8  # Penalty for disagreement
-                        self.stats['hybrid_disagreements'] += 1
-                else:
-                    # No transformer, use regex result
-                    final_is_abusive = regex_result['is_abusive']
-                    final_confidence = regex_result['confidence']
-            else:
-                # Regex says clean, trust it (fast path)
-                final_is_abusive = False
-                final_confidence = 0.0
-            
-            final_result = {
-                'text': text,
-                'is_abusive': final_is_abusive,
-                'confidence': final_confidence,
-                'method': 'fast_first',
-                'predictions': predictions
-            }
-            
-        elif self.ensemble_mode == "both":
-            # Use both methods and combine
-            regex_result = self._predict_regex(text)
+        # Get predictions from available methods
+        transformer_result = None
+        keyword_result = None
+        
+        if self.transformer_available:
             transformer_result = self._predict_transformer(text)
             
-            predictions['regex'] = regex_result
-            predictions['transformer'] = transformer_result
-            
-            self.stats['regex_predictions'] += 1
-            if self.transformer_available:
-                self.stats['transformer_predictions'] += 1
-            
-            # Ensemble logic
-            if regex_result['is_abusive'] and transformer_result['is_abusive']:
-                # Both say abusive - high confidence
-                final_is_abusive = True
-                final_confidence = max(regex_result['confidence'], transformer_result['confidence'])
-                self.stats['hybrid_agreements'] += 1
-            elif regex_result['is_abusive'] or transformer_result['is_abusive']:
-                # One says abusive - medium confidence
-                final_is_abusive = True
-                final_confidence = max(regex_result['confidence'], transformer_result['confidence']) * 0.7
-                self.stats['hybrid_disagreements'] += 1
-            else:
-                # Both say clean
-                final_is_abusive = False
-                final_confidence = 0.0
-                self.stats['hybrid_agreements'] += 1
-            
-            final_result = {
-                'text': text,
-                'is_abusive': final_is_abusive,
-                'confidence': final_confidence,
-                'method': 'both',
-                'predictions': predictions
-            }
+        keyword_result = self._predict_keyword(text)
         
-        else:
-            raise ValueError(f"Unknown ensemble_mode: {self.ensemble_mode}")
+        # Combine results based on ensemble mode
+        final_result = self._combine_predictions(
+            transformer_result, 
+            keyword_result, 
+            text
+        )
         
         # Add timing info
         total_time = (time.time() - start_time) * 1000
         final_result['total_inference_time_ms'] = total_time
         
-        # Update timing stats
-        self._update_timing_stats(predictions, total_time)
+        with self._lock:
+            self.stats['avg_total_time'] = (
+                (self.stats['avg_total_time'] * (self.stats['total_predictions'] - 1) + total_time) / 
+                self.stats['total_predictions']
+            )
         
-        return final_result
+        # Format response
+        response = {
+            'text': text,
+            'is_abusive': final_result['is_abusive'],
+            'confidence': final_result['confidence'],
+            'method': final_result['method']
+        }
+        
+        if return_score:
+            response.update({
+                'transformer_result': transformer_result,
+                'keyword_result': keyword_result,
+                'detected_words': final_result.get('detected_words', []),
+                'total_inference_time_ms': total_time,
+                'model_info': self.get_model_info()
+            })
+        
+        return response
     
-    def _update_timing_stats(self, predictions: Dict[str, Any], total_time: float):
-        """Update timing statistics."""
-        if 'regex' in predictions:
-            regex_time = predictions['regex'].get('inference_time_ms', 0)
-            self._update_avg('avg_regex_time', regex_time, self.stats['regex_predictions'])
+    def _predict_transformer(self, text: str) -> Optional[Dict[str, Any]]:
+        """Get transformer prediction"""
+        if not self.transformer_available or not self.transformer_classifier:
+            return None
         
-        if 'transformer' in predictions:
-            transformer_time = predictions['transformer'].get('inference_time_ms', 0)
-            self._update_avg('avg_transformer_time', transformer_time, self.stats['transformer_predictions'])
-        
-        self._update_avg('avg_total_time', total_time, self.stats['total_predictions'])
+        try:
+            start_time = time.time()
+            result = self.transformer_classifier.predict(text, return_score=True)
+            
+            inference_time = (time.time() - start_time) * 1000
+            
+            with self._lock:
+                self.stats['transformer_predictions'] += 1
+                self.stats['avg_transformer_time'] = (
+                    (self.stats['avg_transformer_time'] * (self.stats['transformer_predictions'] - 1) + inference_time) / 
+                    self.stats['transformer_predictions']
+                )
+            
+            return {
+                'is_abusive': result['is_abusive'],
+                'confidence': result['confidence'],
+                'method': 'transformer',
+                'inference_time_ms': inference_time,
+                'model_path': result.get('model_info', {}).get('model_path', 'unknown')
+            }
+            
+        except Exception as e:
+            logger.error(f"Transformer prediction failed: {e}")
+            return None
     
-    def _update_avg(self, stat_name: str, new_value: float, count: int):
-        """Update running average."""
-        if count <= 1:
-            self.stats[stat_name] = new_value
-        else:
-            current_avg = self.stats[stat_name]
-            self.stats[stat_name] = (current_avg * (count - 1) + new_value) / count
+    def _predict_keyword(self, text: str) -> Dict[str, Any]:
+        """Get keyword-based prediction"""
+        try:
+            start_time = time.time()
+            result = self.keyword_detector.detect(text)
+            
+            inference_time = (time.time() - start_time) * 1000
+            
+            with self._lock:
+                self.stats['keyword_predictions'] += 1
+                self.stats['avg_keyword_time'] = (
+                    (self.stats['avg_keyword_time'] * (self.stats['keyword_predictions'] - 1) + inference_time) / 
+                    self.stats['keyword_predictions']
+                )
+            
+            return {
+                'is_abusive': result['is_abusive'],
+                'confidence': self.keyword_confidence if result['is_abusive'] else 0.0,
+                'detected_words': result['detected_words'],
+                'method': 'keyword',
+                'inference_time_ms': inference_time
+            }
+            
+        except Exception as e:
+            logger.error(f"Keyword prediction failed: {e}")
+            return {
+                'is_abusive': False,
+                'confidence': 0.0,
+                'detected_words': [],
+                'method': 'keyword',
+                'error': str(e)
+            }
     
-    def predict_segments(self, segments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Predict abusive segments with hybrid approach.
+    def _combine_predictions(
+        self, 
+        transformer_result: Optional[Dict[str, Any]], 
+        keyword_result: Dict[str, Any],
+        text: str
+    ) -> Dict[str, Any]:
+        """Combine transformer and keyword predictions"""
         
-        Args:
-            segments: Whisper segments
-            
-        Returns:
-            List of abusive segments
-        """
-        abusive_segments = []
+        # If only keyword detection available
+        if not transformer_result:
+            return {
+                'is_abusive': keyword_result['is_abusive'],
+                'confidence': keyword_result['confidence'],
+                'detected_words': keyword_result.get('detected_words', []),
+                'method': 'keyword_only'
+            }
         
-        for segment in segments:
-            text = segment.get('text', '').strip()
-            if not text:
-                continue
-            
-            prediction = self.predict(text)
-            
-            if prediction['is_abusive']:
-                abusive_segment = {
-                    'text': text,
-                    'start': segment.get('start', 0.0),
-                    'end': segment.get('end', 0.0),
-                    'confidence': prediction['confidence'],
-                    'method': prediction['method'],
-                    'predictions': prediction['predictions'],
-                    'inference_time_ms': prediction['total_inference_time_ms']
+        # Both methods available - combine based on ensemble mode
+        transformer_abusive = transformer_result['is_abusive']
+        transformer_conf = transformer_result['confidence']
+        keyword_abusive = keyword_result['is_abusive']
+        keyword_conf = keyword_result['confidence']
+        
+        if self.ensemble_mode == "transformer_first":
+            # Trust transformer if confident, fallback to keyword
+            if transformer_conf >= self.transformer_threshold:
+                return {
+                    'is_abusive': transformer_abusive,
+                    'confidence': transformer_conf,
+                    'detected_words': keyword_result.get('detected_words', []),
+                    'method': 'transformer_primary'
                 }
-                
-                # Add detected words if available
-                if 'regex' in prediction['predictions']:
-                    abusive_segment['profane_words'] = prediction['predictions']['regex'].get('words', [])
-                
-                abusive_segments.append(abusive_segment)
+            else:
+                return {
+                    'is_abusive': keyword_abusive,
+                    'confidence': keyword_conf,
+                    'detected_words': keyword_result.get('detected_words', []),
+                    'method': 'keyword_fallback'
+                }
         
-        logger.info(f"Hybrid detector found {len(abusive_segments)} abusive segments out of {len(segments)} total")
+        elif self.ensemble_mode == "keyword_first":
+            # Use keyword detection first, transformer for verification
+            if keyword_abusive:
+                return {
+                    'is_abusive': True,
+                    'confidence': max(keyword_conf, transformer_conf),
+                    'detected_words': keyword_result.get('detected_words', []),
+                    'method': 'keyword_primary'
+                }
+            else:
+                return {
+                    'is_abusive': transformer_abusive,
+                    'confidence': transformer_conf,
+                    'detected_words': keyword_result.get('detected_words', []),
+                    'method': 'transformer_secondary'
+                }
         
-        return abusive_segments
+        else:  # "hybrid" mode - intelligent combination
+            # If both agree, use higher confidence
+            if transformer_abusive == keyword_abusive:
+                with self._lock:
+                    self.stats['hybrid_agreements'] += 1
+                
+                return {
+                    'is_abusive': transformer_abusive,
+                    'confidence': max(transformer_conf, keyword_conf),
+                    'detected_words': keyword_result.get('detected_words', []),
+                    'method': 'hybrid_agreement'
+                }
+            
+            # If they disagree, use the one with higher confidence
+            else:
+                with self._lock:
+                    self.stats['hybrid_disagreements'] += 1
+                
+                if transformer_conf > keyword_conf:
+                    return {
+                        'is_abusive': transformer_abusive,
+                        'confidence': transformer_conf,
+                        'detected_words': keyword_result.get('detected_words', []),
+                        'method': 'hybrid_transformer_wins'
+                    }
+                else:
+                    return {
+                        'is_abusive': keyword_abusive,
+                        'confidence': keyword_conf,
+                        'detected_words': keyword_result.get('detected_words', []),
+                        'method': 'hybrid_keyword_wins'
+                    }
+    
+    def predict_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
+        """Batch prediction for multiple texts"""
+        results = []
+        
+        # Use transformer batch processing if available
+        if self.transformer_available and self.transformer_classifier:
+            try:
+                transformer_results = self.transformer_classifier.predict_batch(texts)
+                keyword_results = [self.keyword_detector.detect(text) for text in texts]
+                
+                for i, text in enumerate(texts):
+                    transformer_result = transformer_results[i]
+                    keyword_result = keyword_results[i]
+                    
+                    # Convert to expected format
+                    transformer_formatted = {
+                        'is_abusive': transformer_result['is_abusive'],
+                        'confidence': transformer_result['confidence'],
+                        'method': 'transformer'
+                    }
+                    
+                    keyword_formatted = {
+                        'is_abusive': keyword_result['is_abusive'],
+                        'confidence': self.keyword_confidence if keyword_result['is_abusive'] else 0.0,
+                        'detected_words': keyword_result['detected_words'],
+                        'method': 'keyword'
+                    }
+                    
+                    combined = self._combine_predictions(transformer_formatted, keyword_formatted, text)
+                    combined['text'] = text
+                    results.append(combined)
+                
+                return results
+                
+            except Exception as e:
+                logger.error(f"Batch prediction failed: {e}")
+        
+        # Fallback to individual predictions
+        return [self.predict(text, return_score=False) for text in texts]
+    
+    def get_model_info(self) -> Dict[str, Any]:
+        """Get model information"""
+        info = {
+            'ensemble_mode': self.ensemble_mode,
+            'transformer_available': self.transformer_available,
+            'transformer_threshold': self.transformer_threshold,
+            'keyword_confidence': self.keyword_confidence
+        }
+        
+        if self.transformer_available and self.transformer_classifier:
+            info['transformer_info'] = self.transformer_classifier.get_model_info()
+        
+        return info
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get detector statistics."""
+        """Get performance statistics"""
         stats = self.stats.copy()
         
-        # Add agreement ratio
-        total_hybrid = self.stats['hybrid_agreements'] + self.stats['hybrid_disagreements']
-        if total_hybrid > 0:
-            stats['agreement_ratio'] = self.stats['hybrid_agreements'] / total_hybrid
-        else:
-            stats['agreement_ratio'] = 1.0
-        
-        stats.update({
-            'ensemble_mode': self.ensemble_mode,
-            'regex_available': self.regex_available,
-            'transformer_available': self.transformer_available,
-            'use_transformer': self.use_transformer
-        })
+        if self.transformer_available and self.transformer_classifier:
+            transformer_info = self.transformer_classifier.get_model_info()
+            stats['transformer_info'] = transformer_info
         
         return stats
     
-    def benchmark(self, test_texts: List[str]) -> Dict[str, Any]:
-        """
-        Benchmark the hybrid detector.
-        
-        Args:
-            test_texts: List of texts to benchmark
-            
-        Returns:
-            Benchmark results
-        """
-        start_time = time.time()
-        results = []
-        
-        for text in test_texts:
-            result = self.predict(text)
-            results.append(result)
-        
-        total_time = time.time() - start_time
-        avg_time_ms = (total_time / len(test_texts)) * 1000
-        
-        # Count predictions by method
-        method_counts = {}
-        abusive_count = 0
-        
-        for result in results:
-            method = result['method']
-            method_counts[method] = method_counts.get(method, 0) + 1
-            if result['is_abusive']:
-                abusive_count += 1
-        
-        benchmark_results = {
-            'total_texts': len(test_texts),
-            'total_time_s': total_time,
-            'avg_time_ms': avg_time_ms,
-            'abusive_detected': abusive_count,
-            'abusive_ratio': abusive_count / len(test_texts),
-            'method_distribution': method_counts,
-            'stats': self.get_stats()
+    def set_threshold(self, threshold: float):
+        """Update transformer threshold"""
+        self.transformer_threshold = threshold
+        if self.transformer_available and self.transformer_classifier:
+            # Update the confidence threshold directly on the transformer
+            self.transformer_classifier.confidence_threshold = threshold
+        logger.info(f"Threshold updated to {threshold}")
+
+
+class KeywordAbuseDetector:
+    """
+    Enhanced keyword-based abuse detector for multilingual content.
+    Supports English, Hindi, and Hinglish with advanced pattern matching.
+    """
+    
+    def __init__(self):
+        # English abuse words
+        self.english_words = {
+            'fuck', 'fucking', 'fucked', 'fucker', 'fuk', 'fck', 'f*ck',
+            'shit', 'bullshit', 'horseshit',
+            'bitch', 'bitches', 'son of a bitch', 'b*tch',
+            'asshole', 'ass', 'dumbass', 'jackass',
+            'damn', 'goddamn', 'dammit',
+            'hell', 'go to hell',
+            'bastard', 'bastards',
+            'crap', 'crappy',
+            'piss', 'pissed', 'piss off',
+            'whore', 'slut', 'sluts',
+            'dick', 'dickhead',
+            'pussy', 'cock', 'penis',
+            'stupid', 'idiot', 'moron', 'retard'
         }
         
-        return benchmark_results
-
-# Global hybrid detector instance
-_global_hybrid_detector: Optional[HybridProfanityDetector] = None
-
-def get_hybrid_detector(
-    transformer_model_path: Optional[str] = None,
-    ensemble_mode: str = "fast_first"
-) -> HybridProfanityDetector:
-    """
-    Get global hybrid detector instance.
-    
-    Args:
-        transformer_model_path: Path to transformer model
-        ensemble_mode: Ensemble mode
+        # Hindi abuse words
+        self.hindi_words = {
+            'चूतिया', 'मादरचोद', 'भेनचोद', 'भोसड़ी', 'रंडी', 'साला', 'कुत्ता',
+            'हरामी', 'गांडू', 'लौड़ा', 'लंड', 'भोसड़ा', 'रंड', 'कमीना'
+        }
         
-    Returns:
-        HybridProfanityDetector instance
-    """
-    global _global_hybrid_detector
-    
-    if _global_hybrid_detector is None:
-        _global_hybrid_detector = HybridProfanityDetector(
-            transformer_model_path=transformer_model_path,
-            ensemble_mode=ensemble_mode
-        )
-    
-    return _global_hybrid_detector
-
-def detect_abusive_hybrid(text: str) -> bool:
-    """
-    Simple function to detect abusive text using hybrid approach.
-    
-    Args:
-        text: Input text
+        # Hinglish/Romanized Hindi abuse words  
+        self.hinglish_words = {
+            'chutiya', 'chutiye', 'madarchod', 'mc', 'behenchod', 'bc',
+            'bhosdi', 'bhosda', 'randi', 'saala', 'sala', 'kutta',
+            'harami', 'gandu', 'lauda', 'lund', 'kamina', 'kameena',
+            'bhenchod', 'madarchod', 'maderchod', 'benchod', 'bhencho',
+            'chodu', 'chomu', 'gaandu', 'gand', 'rand'
+        }
         
-    Returns:
-        True if abusive, False otherwise
-    """
-    detector = get_hybrid_detector()
-    result = detector.predict(text)
-    return result['is_abusive']
-
-def detect_abusive_segments_hybrid(segments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Detect abusive segments using hybrid approach.
-    
-    Args:
-        segments: Whisper segments
+        # Combine all wordlists
+        self.all_words = self.english_words | self.hindi_words | self.hinglish_words
         
-    Returns:
-        List of abusive segments
-    """
-    detector = get_hybrid_detector()
-    return detector.predict_segments(segments)
+        # Common obfuscation patterns
+        self.obfuscation_map = {
+            '@': 'a', '$': 's', '3': 'e', '1': 'i', '0': 'o',
+            '4': 'a', '5': 's', '7': 't', '8': 'b', '!': 'i',
+            '*': '', '#': '', '%': '', '&': 'and'
+        }
+    
+    def _normalize_text(self, text: str) -> str:
+        """Normalize text for better matching"""
+        text = text.lower().strip()
+        
+        # Handle obfuscation
+        for char, replacement in self.obfuscation_map.items():
+            text = text.replace(char, replacement)
+        
+        # Remove extra spaces and punctuation
+        import re
+        text = re.sub(r'[^\w\s]', ' ', text)
+        text = re.sub(r'\s+', ' ', text)
+        
+        return text
+    
+    def detect(self, text: str) -> Dict[str, Any]:
+        """
+        Detect abuse using keyword matching with proper word boundaries.
+        
+        Args:
+            text: Input text
+            
+        Returns:
+            Detection result with detected words
+        """
+        if not text or not text.strip():
+            return {
+                'is_abusive': False,
+                'detected_words': [],
+                'confidence': 0.0
+            }
+        
+        normalized_text = self._normalize_text(text)
+        detected_words = []
+        
+        # Check for exact word matches using word boundaries
+        for abuse_word in self.all_words:
+            # Create regex pattern for word boundaries
+            pattern = r'\b' + re.escape(abuse_word) + r'\b'
+            if re.search(pattern, normalized_text, re.IGNORECASE):
+                detected_words.append(abuse_word)
+        
+        # Check for obfuscated words (only for longer words to avoid false positives)
+        for abuse_word in self.all_words:
+            if len(abuse_word) > 4:  # Only check longer words for obfuscation
+                # Look for obfuscated versions with character substitutions
+                obfuscated_pattern = self._create_obfuscated_pattern(abuse_word)
+                if re.search(obfuscated_pattern, normalized_text, re.IGNORECASE):
+                    if abuse_word not in detected_words:
+                        detected_words.append(abuse_word)
+        
+        is_abusive = len(detected_words) > 0
+        confidence = 0.9 if is_abusive else 0.1
+        
+        return {
+            'is_abusive': is_abusive,
+            'detected_words': detected_words,
+            'confidence': confidence
+        }
+    
+    def _create_obfuscated_pattern(self, word: str) -> str:
+        """
+        Create regex pattern to match obfuscated versions of a word.
+        
+        Args:
+            word: Original abuse word
+            
+        Returns:
+            Regex pattern for obfuscated matches
+        """
+        # Convert word to pattern that handles common obfuscations
+        pattern = r'\b'
+        for char in word:
+            if char in self.obfuscation_map:
+                # Create character class for obfuscated characters
+                obf_chars = ''.join(self.obfuscation_map[char])
+                pattern += f'[{re.escape(char)}{re.escape(obf_chars)}]'
+            else:
+                pattern += re.escape(char)
+        pattern += r'\b'
+        return pattern
+        
+        return {
+            'is_abusive': len(detected_words) > 0,
+            'detected_words': detected_words,
+            'confidence': 1.0 if detected_words else 0.0
+        }
+
+
+# Legacy compatibility - keep the old class name
+HybridProfanityDetector = HybridAbuseDetector
