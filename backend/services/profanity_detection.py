@@ -1041,5 +1041,151 @@ def manual_word_training(words_to_add: List[str], language: str = "hindi_latin")
     }
 
 
+def get_processing_method_for_tier(subscription_tier: str = 'free') -> Dict[str, Any]:
+    """
+    Get the appropriate processing method based on user's subscription tier.
+    
+    Args:
+        subscription_tier (str): User's subscription tier ('free', 'basic', 'pro', 'enterprise')
+    
+    Returns:
+        Dict containing processing configuration for the tier
+    """
+    processing_configs = {
+        'free': {
+            'method': 'regex_keyword',
+            'description': 'Fast regex + keyword matching',
+            'whisper_model': 'base',
+            'features': ['basic_detection', 'english_only'],
+            'languages': ['english'],
+            'coming_soon_languages': ['hindi', 'hinglish'],
+            'available': True,
+            'processing_time': 'fast',
+            'accuracy': 'good'
+        },
+        'basic': {
+            'method': 'regex_keyword',
+            'description': 'Enhanced regex + keyword matching with API access',
+            'whisper_model': 'base',
+            'features': ['basic_detection', 'english_only', 'api_access'],
+            'languages': ['english'],
+            'coming_soon_languages': ['hindi', 'hinglish'],
+            'available': True,
+            'processing_time': 'fast',
+            'accuracy': 'good'
+        },
+        'pro': {
+            'method': 'advanced_ai_ml',
+            'description': 'Advanced AI + ML models with context awareness',
+            'whisper_model': 'large',
+            'features': ['advanced_detection', 'multilingual', 'context_aware', 'custom_wordlists'],
+            'languages': ['english', 'hindi', 'hinglish', 'urdu'],
+            'available': False,
+            'status': 'coming_soon',
+            'expected_release': 'Q3 2025',
+            'processing_time': 'medium',
+            'accuracy': 'excellent'
+        },
+        'enterprise': {
+            'method': 'custom_ai_training',
+            'description': 'Custom AI training with real-time streaming',
+            'whisper_model': 'large-v3',
+            'features': ['custom_training', 'real_time_streaming', 'multi_speaker_id', 'webhooks'],
+            'languages': ['all_supported_languages', 'custom_languages'],
+            'available': False,
+            'status': 'coming_soon',
+            'expected_release': 'Q4 2025',
+            'processing_time': 'variable',
+            'accuracy': 'superior'
+        }
+    }
+    
+    config = processing_configs.get(subscription_tier, processing_configs['free'])
+    
+    # Add tier info
+    config['tier'] = subscription_tier
+    config['fallback_tier'] = 'free' if subscription_tier not in ['free', 'basic'] else subscription_tier
+    
+    return config
+
+
+def should_use_advanced_processing(subscription_tier: str) -> bool:
+    """
+    Check if the user's tier supports advanced processing methods.
+    
+    Args:
+        subscription_tier (str): User's subscription tier
+    
+    Returns:
+        bool: True if advanced processing is available for this tier
+    """
+    config = get_processing_method_for_tier(subscription_tier)
+    return config.get('available', False) and config.get('method') in ['advanced_ai_ml', 'custom_ai_training']
+
+
+def get_whisper_model_for_tier(subscription_tier: str) -> str:
+    """
+    Get the appropriate Whisper model based on user's subscription tier.
+    
+    Args:
+        subscription_tier (str): User's subscription tier
+    
+    Returns:
+        str: Whisper model to use ('base', 'large', 'large-v3')
+    """
+    config = get_processing_method_for_tier(subscription_tier)
+    return config.get('whisper_model', 'base')
+
+
+def process_with_tier_method(text: str, subscription_tier: str = 'free') -> Dict[str, Any]:
+    """
+    Process text using the appropriate method for the user's subscription tier.
+    
+    Args:
+        text (str): Text to process for profanity
+        subscription_tier (str): User's subscription tier
+    
+    Returns:
+        Dict containing processing results
+    """
+    config = get_processing_method_for_tier(subscription_tier)
+    
+    # For now, all tiers use regex+keyword method since advanced AI is coming soon
+    if config['available']:
+        # Use current regex-based detection
+        detected = detect_profane_words_in_text(text)
+        
+        result = {
+            'method_used': config['method'],
+            'tier': subscription_tier,
+            'processing_config': config,
+            'detected_profanity': detected,
+            'contains_profanity': len(detected) > 0,
+            'total_detections': len(detected),
+            'languages_detected': list(set([item['language'] for item in detected])),
+            'processing_time_estimate': config['processing_time']
+        }
+    else:
+        # Fallback to free tier method for unavailable tiers
+        fallback_config = get_processing_method_for_tier('free')
+        detected = detect_profane_words_in_text(text)
+        
+        result = {
+            'method_used': fallback_config['method'],
+            'tier': subscription_tier,
+            'fallback_tier': 'free',
+            'processing_config': config,
+            'fallback_config': fallback_config,
+            'detected_profanity': detected,
+            'contains_profanity': len(detected) > 0,
+            'total_detections': len(detected),
+            'languages_detected': list(set([item['language'] for item in detected])),
+            'processing_time_estimate': fallback_config['processing_time'],
+            'note': f"{subscription_tier.title()} tier features coming soon. Using {fallback_config['method']} method."
+        }
+    
+    return result
+
+
 # Load previously learned words when module is imported
 load_learned_words_from_file()

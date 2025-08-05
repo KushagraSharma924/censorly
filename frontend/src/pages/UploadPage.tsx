@@ -474,12 +474,26 @@ const UploadPage: React.FC = () => {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Detection method:</span>
+                    <span className="font-medium">Regex & Keyword</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Processing method:</span>
+                    <span className="font-medium">Regex & Keyword Detection</span>
+                  </div>
+                  <div className="text-xs text-orange-600 mt-1">
+                    Advanced AI detection coming in Pro tier
+                  </div>
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Processing time:</span>
                     <span className="font-medium">~2-5 minutes per video</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Supported languages:</span>
-                    <span className="font-medium">Hindi, English</span>
+                    <span className="font-medium">English only</span>
+                  </div>
+                  <div className="text-xs text-orange-600 mt-1">
+                    Multi-language support coming in Pro tier
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Max file size:</span>

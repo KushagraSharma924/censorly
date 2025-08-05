@@ -1,31 +1,28 @@
 """
 Enhanced SaaS Flask Application for AI Profanity Filter Platform
-Complete production-ready Flask app with JWT auth, billing, and API management.
+Complete production-ready Flask app with Supabase backend (no SQLAlchemy).
 """
 
 from flask import Flask, jsonify, request, make_response, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, get_jwt
-from flask_migrate import Migrate
-from datetime import timedelta
+from datetime import timedelta, datetime
 import os
 import logging
 from dotenv import load_dotenv
-from sqlalchemy import text
 
 # Load environment variables
 load_dotenv()
 
-# Import database models
-from models.saas_models import db, User, Job, APIKey, Subscription, TrainingSession
-from services.supabase_service import supabase_service
+# Import Supabase service (replacing SQLAlchemy)
+from services.supabase_service_new import supabase_service
 
-# Import route blueprints (with fallbacks for missing routes)
+# Import route blueprints
 try:
-    from api.auth_enhanced import auth_bp
+    from api.supabase_routes import supabase_bp
 except ImportError:
-    print("Warning: auth_enhanced blueprint not available")
-    auth_bp = None
+    print("Warning: supabase_routes blueprint not available")
+    supabase_bp = None
 
 try:
     from api.saas_routes_enhanced import saas_bp
@@ -136,6 +133,13 @@ def create_app():
         app.register_blueprint(auth_bp)  # Enhanced auth routes
     if saas_bp:
         app.register_blueprint(saas_bp)  # SaaS features (API keys, billing, usage)
+        # Initialize rate limiter for SaaS routes
+        try:
+            from api.saas_routes_enhanced import init_rate_limiter
+            init_rate_limiter()
+            app.logger.info("Rate limiter initialized successfully")
+        except Exception as e:
+            app.logger.warning(f"Rate limiter initialization failed: {e}")
     if payment_bp:
         app.register_blueprint(payment_bp)  # Payment and subscription routes
     if modern_bp:
@@ -166,21 +170,45 @@ def create_app():
                 'video_processing',
                 'nsfw_content_detection',
                 'real_time_processing'
-            ]
+            ],
+            'processing_methods': {
+                'current': 'regex_keyword_matching',
+                'available_models': ['whisper_base'],
+                'coming_soon': ['advanced_ai_ml', 'custom_training'],
+                'supported_languages': ['english'],
+                'coming_soon_languages': ['hindi', 'hinglish', 'urdu']
+            }
         })
 
-    # CORS test endpoint
-    @app.route('/api/cors-test', methods=['GET', 'POST', 'OPTIONS'])
-    def cors_test():
-        """Test endpoint to verify CORS configuration."""
+    # Health check endpoint for Docker/production monitoring
+    @app.route('/api/health', methods=['GET'])
+    def api_health_check():
+        """Health check endpoint for container orchestration."""
+        try:
+            # Test database connection
+            db.session.execute(text('SELECT 1'))
+            db_status = 'healthy'
+        except Exception as e:
+            app.logger.error(f"Database health check failed: {e}")
+            db_status = 'unhealthy'
+            
         return jsonify({
-            'message': 'CORS is working correctly',
-            'method': request.method,
-            'origin': request.headers.get('Origin'),
-            'cors_enabled': True
-        })
+            'status': 'healthy' if db_status == 'healthy' else 'unhealthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '2.0.0',
+            'service': 'AI Profanity Filter SaaS',
+            'database': db_status,
+            'features': [
+                'jwt_authentication',
+                'api_key_management',
+                'subscription_billing',
+                'multi_language_detection',
+                'video_processing',
+                'nsfw_content_detection',
+                'real_time_processing'
+            ]
+        }), 200 if db_status == 'healthy' else 503
 
-    # Debug endpoint to test authentication
     @app.route('/api/debug/auth', methods=['GET'])
     @jwt_required()
     def debug_auth():
@@ -332,7 +360,10 @@ def create_app():
                     'POST /api/webhook/razorpay': 'Razorpay payment webhook'
                 }
             },
-            'supported_languages': ['english', 'hindi', 'hinglish', 'urdu'],
+            'supported_languages': {
+                'current': ['english'],
+                'coming_soon': ['hindi', 'hinglish', 'urdu']
+            },
             'features': [
                 'Real-time profanity detection',
                 'Multi-language support',
@@ -345,31 +376,42 @@ def create_app():
             ],
             'limits': {
                 'free': {
-                    'monthly_videos': 10,
+                    'monthly_videos': 3,
                     'max_file_size': '100MB',
                     'max_duration': '5 minutes',
+                    'processing': 'regex + keyword matching',
                     'whisper_model': 'base'
                 },
                 'basic': {
-                    'monthly_videos': 100,
-                    'max_file_size': '500MB',
+                    'monthly_videos': 30,
+                    'total_storage': '1GB',
+                    'max_file_size': '100MB',
                     'max_duration': '30 minutes',
-                    'whisper_model': 'medium',
+                    'processing': 'regex + keyword matching',
+                    'whisper_model': 'base',
                     'price': '₹999/month'
                 },
                 'pro': {
                     'monthly_videos': 500,
+                    'total_storage': '10GB',
                     'max_file_size': '1GB',
                     'max_duration': '60 minutes',
+                    'processing': 'advanced AI + ML models',
                     'whisper_model': 'large',
-                    'price': '₹2999/month'
+                    'price': '₹2999/month',
+                    'status': 'coming_soon',
+                    'expected_release': 'Q3 2025'
                 },
                 'enterprise': {
                     'monthly_videos': 'unlimited',
+                    'total_storage': 'unlimited',
                     'max_file_size': '5GB',
                     'max_duration': '180 minutes',
-                    'whisper_model': 'large',
-                    'price': '₹9999/month'
+                    'processing': 'custom AI training + real-time detection',
+                    'whisper_model': 'large-v3',
+                    'price': '₹9999/month',
+                    'status': 'coming_soon',
+                    'expected_release': 'Q4 2025'
                 }
             }
         })

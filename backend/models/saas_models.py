@@ -56,28 +56,49 @@ class User(db.Model):
         """Get plan limits based on subscription tier."""
         plans = {
             'free': {
-                'monthly_limit': 10,
+                'monthly_limit': 3,  # Updated to match your live specs
                 'max_file_size_mb': 100,
                 'max_video_minutes': 5,
-                'features': ['basic_detection']
+                'processing_method': 'regex_keyword',
+                'whisper_model': 'base',
+                'features': ['basic_detection', 'english_only', 'beep_mute_modes'],
+                'languages': ['english'],
+                'coming_soon_languages': ['hindi', 'hinglish']
             },
             'basic': {
-                'monthly_limit': 100,
-                'max_file_size_mb': 500,
+                'monthly_limit': 30,  # Updated to match your live specs
+                'total_storage_gb': 1,  # Added total storage limit
+                'max_file_size_mb': 100,  # Keep same as free for now
                 'max_video_minutes': 30,
-                'features': ['basic_detection', 'api_access']
+                'processing_method': 'regex_keyword',
+                'whisper_model': 'base',
+                'features': ['basic_detection', 'english_only', 'api_access', 'beep_mute_modes'],
+                'languages': ['english'],
+                'coming_soon_languages': ['hindi', 'hinglish']
             },
             'pro': {
                 'monthly_limit': 500,
+                'total_storage_gb': 10,
                 'max_file_size_mb': 1000,
                 'max_video_minutes': 60,
-                'features': ['advanced_detection', 'api_access', 'priority_processing']
+                'processing_method': 'advanced_ai_ml',
+                'whisper_model': 'large',
+                'features': ['advanced_detection', 'multilingual', 'api_access', 'priority_processing', 'all_censor_modes', 'custom_wordlists'],
+                'languages': ['english', 'hindi', 'hinglish', 'urdu', 'tamil', 'telugu'],
+                'status': 'coming_soon',
+                'expected_release': 'Q3 2025'
             },
             'enterprise': {
                 'monthly_limit': -1,  # Unlimited
+                'total_storage_gb': -1,  # Unlimited
                 'max_file_size_mb': 5000,
                 'max_video_minutes': 180,
-                'features': ['all_features', 'dedicated_support']
+                'processing_method': 'custom_ai_training',
+                'whisper_model': 'large-v3',
+                'features': ['all_features', 'dedicated_support', 'custom_training', 'webhooks', 'real_time_streaming', 'multi_speaker_id'],
+                'languages': ['all_supported_languages'],
+                'status': 'coming_soon',
+                'expected_release': 'Q4 2025'
             }
         }
         return plans.get(self.subscription_tier, plans['free'])

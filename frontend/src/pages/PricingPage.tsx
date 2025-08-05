@@ -2,9 +2,14 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Check, Zap, Shield, Users, Phone } from 'lucide-react';
+import { Crown, Check, Zap, Shield, Users, Phone, User, ArrowLeft } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:8080';
+
+// Simple auth check
+const isAuthenticated = () => {
+  return !!localStorage.getItem('access_token');
+};
 
 interface Plan {
   id: string;
@@ -13,54 +18,32 @@ interface Plan {
   currency: string;
   billing_cycle: string;
   features: string[];
+  comingSoon?: boolean;
 }
 
 const PricingPage: React.FC = () => {
-  // Static plans with different pricing for each card
+  const loggedIn = isAuthenticated();
+  
+  // Updated plans - Only showing Free and Basic for now
   const plans = {
     basic: {
       id: 'basic',
       name: 'Basic',
-      price: 799,
+      price: 999,
       currency: '₹',
       billing_cycle: 'monthly',
+      popular: true,
       features: [
-        '10,000 API calls per month',
-        'Basic profanity detection',
-        'Text content filtering',
-        'Email support',
-        'Community access'
-      ]
-    },
-    pro: {
-      id: 'pro',
-      name: 'Pro',
-      price: 2499,
-      currency: '₹',
-      billing_cycle: 'monthly',
-      features: [
-        '100,000 API calls per month',
-        'Advanced AI detection',
-        'Audio & video filtering',
-        'Priority support',
-        'Custom filters',
-        'Analytics dashboard'
-      ]
-    },
-    enterprise: {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price: 7999,
-      currency: '₹',
-      billing_cycle: 'monthly',
-      features: [
-        'Unlimited API calls',
-        'Custom AI models',
-        'Multi-media processing',
-        '24/7 phone support',
-        'White-label solution',
-        'Advanced analytics',
-        'SLA guarantee'
+        '🚀 4x more videos (40 vs 10 per month)',
+        '⚡ 4x more API processing calls (40 vs 10)',
+        '📊 2x more general API calls (100 vs 50)',
+        '🔑 More API keys (10 vs 3 maximum)',
+        '💾 Same file size limit (100MB)',
+        '🎯 Advanced regex & keyword detection',
+        '🌍 English language support',
+        '💬 Priority email support',
+        '📈 Usage analytics dashboard',
+        '🔄 Monthly usage resets'
       ]
     }
   };
@@ -76,6 +59,14 @@ const PricingPage: React.FC = () => {
   };
 
   const handleSubscribe = (planId: string) => {
+    const plan = plans[planId as keyof typeof plans];
+    
+    // Check if plan is coming soon
+    if ('comingSoon' in plan && plan.comingSoon) {
+      alert('This plan is coming soon! Please check back later or contact support for early access.');
+      return;
+    }
+    
     const paymentLink = razorpayLinks[planId as keyof typeof razorpayLinks];
     if (paymentLink) {
       // Open Razorpay payment link in new tab
@@ -112,7 +103,56 @@ const PricingPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => window.location.href = '/'}
+                className="mr-4"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900">
+                AI Profanity Filter - Pricing
+              </h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              {loggedIn ? (
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => window.location.href = '/dashboard'}>
+                    <User className="h-4 w-4 mr-2" />
+                    Dashboard
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      localStorage.removeItem('access_token');
+                      localStorage.removeItem('refresh_token');
+                      localStorage.removeItem('user');
+                      window.location.reload();
+                    }}
+                  >
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => window.location.href = '/login'}>
+                  Get Started
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="py-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
@@ -130,8 +170,9 @@ const PricingPage: React.FC = () => {
           )}
         </div>
 
-        {/* Free Plan */}
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
+        {/* Pricing Cards - Free and Basic Only */}
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12">
+          {/* Free Plan */}
           <Card className="border-gray-200 hover:border-gray-300 transition-colors">
             <CardHeader className="text-center">
               <Users className="h-8 w-8 text-gray-500 mx-auto mb-2" />
@@ -147,6 +188,18 @@ const PricingPage: React.FC = () => {
                 </li>
                 <li className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-2" />
+                  <span className="text-sm">10 API processing calls</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-2" />
+                  <span className="text-sm">50 general API calls</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-2" />
+                  <span className="text-sm">3 API keys maximum</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-2" />
                   <span className="text-sm">100MB file size</span>
                 </li>
                 <li className="flex items-center">
@@ -155,114 +208,124 @@ const PricingPage: React.FC = () => {
                 </li>
                 <li className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-2" />
-                  <span className="text-sm">Hindi/English</span>
+                  <span className="text-sm">Community support</span>
                 </li>
               </ul>
-              <Button variant="outline" className="w-full" disabled>
-                Current Plan
-              </Button>
+              {loggedIn ? (
+                <Button variant="outline" className="w-full" disabled>
+                  Current Plan
+                </Button>
+              ) : (
+                <Button variant="outline" className="w-full" onClick={() => window.location.href = '/login'}>
+                  Get Started Free
+                </Button>
+              )}
             </CardContent>
           </Card>
 
-          {/* Paid Plans */}
-          {Object.entries(plans).map(([planId, plan]) => (
-            <Card key={planId} className={`transition-all duration-200 ${getPlanColor(planId)} ${planId === 'pro' ? 'relative' : ''}`}>
-              {planId === 'pro' && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-purple-500 text-white px-3 py-1">
-                    Most Popular
-                  </Badge>
-                </div>
-              )}
-              <CardHeader className="text-center">
-                {getPlanIcon(planId)}
-                <CardTitle className="text-xl text-gray-900 mt-2">{plan.name}</CardTitle>
-                <div className="text-3xl font-bold text-gray-900">₹{plan.price}</div>
-                <p className="text-gray-600">per {plan.billing_cycle}</p>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-center">
-                      <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button 
-                  className={`w-full ${planId === 'pro' ? 'bg-purple-500 hover:bg-purple-600' : ''}`}
-                  onClick={() => handleSubscribe(planId)}
-                >
-                  Subscribe Now
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {/* Basic Plan - Enhanced */}
+          <Card className="border-blue-200 hover:border-blue-300 ring-2 ring-blue-500 relative transform hover:scale-105 transition-all duration-200 shadow-lg">
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+              <Badge className="bg-blue-500 text-white px-4 py-1 text-sm font-semibold">
+                🔥 Most Popular
+              </Badge>
+            </div>
+            <CardHeader className="text-center pt-8">
+              <Zap className="h-10 w-10 text-blue-500 mx-auto mb-2" />
+              <CardTitle className="text-2xl text-gray-900">Basic</CardTitle>
+              <div className="text-4xl font-bold text-blue-600">₹999</div>
+              <p className="text-gray-600">per month</p>
+              <p className="text-sm text-blue-600 font-medium">⚡ 4x More Powerful Than Free</p>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 mb-6">
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">40 videos/month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">40 API processing calls</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">100 general API calls</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">10 API keys maximum</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">100MB file size</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">Advanced detection</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">Priority email support</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">Usage analytics dashboard</span>
+                </li>
+              </ul>
+              <Button 
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 text-lg"
+                onClick={() => handleSubscribe('basic')}
+              >
+                🚀 Upgrade to Basic
+              </Button>
+              <p className="text-xs text-center text-gray-500 mt-2">
+                Cancel anytime • 7-day money back guarantee
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Features Comparison */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-center mb-8">Feature Comparison</h2>
+        {/* Simple Feature Comparison */}
+        <div className="bg-white rounded-lg shadow-lg p-8 mb-12">
+          <h2 className="text-2xl font-bold text-center mb-8">Why Upgrade to Basic?</h2>
           
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4">Features</th>
-                  <th className="text-center py-3 px-4">Free</th>
-                  <th className="text-center py-3 px-4">Basic</th>
-                  <th className="text-center py-3 px-4">Pro</th>
-                  <th className="text-center py-3 px-4">Enterprise</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b">
-                  <td className="py-3 px-4">Monthly Videos</td>
-                  <td className="text-center py-3 px-4">10</td>
-                  <td className="text-center py-3 px-4">100</td>
-                  <td className="text-center py-3 px-4">500</td>
-                  <td className="text-center py-3 px-4">Unlimited</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 px-4">Max File Size</td>
-                  <td className="text-center py-3 px-4">100MB</td>
-                  <td className="text-center py-3 px-4">500MB</td>
-                  <td className="text-center py-3 px-4">1GB</td>
-                  <td className="text-center py-3 px-4">5GB</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 px-4">API Access</td>
-                  <td className="text-center py-3 px-4">❌</td>
-                  <td className="text-center py-3 px-4">✅</td>
-                  <td className="text-center py-3 px-4">✅</td>
-                  <td className="text-center py-3 px-4">✅</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 px-4">Priority Processing</td>
-                  <td className="text-center py-3 px-4">❌</td>
-                  <td className="text-center py-3 px-4">❌</td>
-                  <td className="text-center py-3 px-4">✅</td>
-                  <td className="text-center py-3 px-4">✅</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 px-4">Custom Wordlists</td>
-                  <td className="text-center py-3 px-4">❌</td>
-                  <td className="text-center py-3 px-4">❌</td>
-                  <td className="text-center py-3 px-4">✅</td>
-                  <td className="text-center py-3 px-4">✅</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4">Support</td>
-                  <td className="text-center py-3 px-4">Community</td>
-                  <td className="text-center py-3 px-4">Email</td>
-                  <td className="text-center py-3 px-4">
-                    <Phone className="h-4 w-4 inline mr-1" />
-                    Phone
-                  </td>
-                  <td className="text-center py-3 px-4">Dedicated</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Zap className="h-8 w-8 text-blue-500" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">4x More Capacity</h3>
+              <p className="text-gray-600">Process 40 videos per month instead of just 10. Perfect for growing businesses and content creators.</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-8 w-8 text-blue-500" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Enhanced API Access</h3>
+              <p className="text-gray-600">Get 4x more API processing calls and 2x general API calls for seamless integration.</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Users className="h-8 w-8 text-blue-500" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Priority Support</h3>
+              <p className="text-gray-600">Get priority email support and access to detailed usage analytics dashboard.</p>
+            </div>
+          </div>
+          
+          <div className="mt-8 text-center">
+            <p className="text-gray-600 mb-4">
+              <strong>Only ₹999/month</strong> - Less than ₹33 per day for 4x the capacity!
+            </p>
+            <Button 
+              size="lg" 
+              className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3"
+              onClick={() => handleSubscribe('basic')}
+            >
+              🚀 Upgrade Now - Save 70% vs Pay-per-use
+            </Button>
           </div>
         </div>
 
@@ -288,6 +351,7 @@ const PricingPage: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

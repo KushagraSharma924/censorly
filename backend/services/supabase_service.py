@@ -1,11 +1,16 @@
 """
-Supabase integration service for AI Profanity Filter.
-Handles direct Supabase operations alongside SQLAlchemy.
+Supabase Database Service for AI Profanity Filter SaaS Platform
+Complete replacement for SQLAlchemy with pure Supabase operations.
 """
 
 import os
-from typing import Optional, Dict, Any, List
 import logging
+from typing import Optional, Dict, Any, List, Union
+from datetime import datetime, timedelta
+import uuid
+import secrets
+import hashlib
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Load environment variables
 try:
@@ -19,37 +24,127 @@ try:
     HAS_SUPABASE = True
 except ImportError:
     HAS_SUPABASE = False
-
-try:
-    from flask import current_app
-    HAS_FLASK = True
-except ImportError:
-    HAS_FLASK = False
+    Client = None
 
 logger = logging.getLogger(__name__)
 
-# Global Supabase client
-_supabase_client: Optional[Client] = None
-
-
-def get_supabase_client() -> Client:
-    """Get or create Supabase client instance."""
-    global _supabase_client
+class SupabaseService:
+    """Complete database service using Supabase."""
     
-    if not HAS_SUPABASE:
-        raise Exception("Supabase client library not installed. Run: pip install supabase")
-    
-    if _supabase_client is None:
-        supabase_url = os.environ.get('SUPABASE_URL')
-        supabase_key = os.environ.get('SUPABASE_KEY')
+    def __init__(self):
+        """Initialize Supabase service."""
+        if not HAS_SUPABASE:
+            raise Exception("Supabase client library not installed. Run: pip install supabase")
         
-        if not supabase_url or not supabase_key:
+        self.supabase_url = os.environ.get('SUPABASE_URL')
+        self.supabase_key = os.environ.get('SUPABASE_KEY')
+        
+        if not self.supabase_url or not self.supabase_key:
             raise Exception("SUPABASE_URL and SUPABASE_KEY environment variables are required")
         
-        _supabase_client = create_client(supabase_url, supabase_key)
-        logger.info("Supabase client initialized successfully")
+        self.client: Client = create_client(self.supabase_url, self.supabase_key)
+        logger.info("Supabase service initialized successfully")
     
-    return _supabase_client
+    # User Management
+    async def create_user(self, email: str, password: str, full_name: str = None) -> Dict[str, Any]:
+        """Create a new user with Supabase Auth."""
+        try:
+            # Create user with Supabase Auth
+            auth_response = self.client.auth.sign_up({
+                "email": email,
+                "password": password,
+                "options": {
+                    "data": {
+                        "full_name": full_name
+                    }
+                }
+            })
+            
+            if auth_response.user:
+                # Insert additional user data into our users table
+                user_data = {
+                    "id": auth_response.user.id,
+                    "email": email,
+                    "full_name": full_name,
+                    "password_hash": generate_password_hash(password),
+                    "subscription_tier": "free",
+                    "is_active": True,
+                    "is_verified": False
+                }
+                
+                result = self.client.table("users").insert(user_data).execute()
+                
+                return {
+                    "success": True,
+                    "user": result.data[0] if result.data else None,
+                    "auth_user": auth_response.user
+                }
+            
+            return {"success": False, "error": "User creation failed"}
+            
+        except Exception as e:
+            logger.error(f"User creation error: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
+        """Authenticate user with Supabase Auth."""
+        try:
+            auth_response = self.client.auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+            
+            if auth_response.user:
+                # Get user data from our users table
+                user_data = self.client.table("users").select("*").eq("id", auth_response.user.id).execute()
+                
+                # Update last login
+                self.client.table("users").update({
+                    "last_login": datetime.utcnow().isoformat()
+                }).eq("id", auth_response.user.id).execute()
+                
+                return {
+                    "success": True,
+                    "user": user_data.data[0] if user_data.data else None,
+                    "session": auth_response.session,
+                    "access_token": auth_response.session.access_token if auth_response.session else None
+                }
+            
+            return {"success": False, "error": "Invalid credentials"}
+            
+        except Exception as e:
+            logger.error(f"Authentication error: {str(e)}")
+            return {"success": False, "error": "Authentication failed"}
+    
+    def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get user by ID."""
+        try:
+            result = self.client.table("users").select("*").eq("id", user_id).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Get user error: {str(e)}")
+            return None
+    
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """Get user by email."""
+        try:
+            result = self.client.table("users").select("*").eq("email", email).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Get user by email error: {str(e)}")
+            return None
+    
+    def update_user(self, user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update user data."""
+        try:
+            result = self.client.table("users").update(data).eq("id", user_id).execute()
+            return {
+                "success": True,
+                "user": result.data[0] if result.data else None
+            }
+        except Exception as e:
+            logger.error(f"Update user error: {str(e)}")
+            return {"success": False, "error": str(e)}
 
 
 def get_service_client() -> Client:

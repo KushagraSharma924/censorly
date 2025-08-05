@@ -18,8 +18,10 @@ import {
   Shield,
   Zap,
   Copy,
-  Trash2
+  Trash2,
+  Globe
 } from 'lucide-react';
+import { apiService, APICapabilities } from '@/lib/api-service';
 
 const API_BASE_URL = 'http://localhost:8080';
 
@@ -55,10 +57,49 @@ interface APIKey {
   usage_count?: number;
 }
 
+interface UsageStats {
+  usage: {
+    processing: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    upload: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    general: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    api_keys: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+  };
+  limits: {
+    general: number;
+    processing: number;
+    upload: number;
+    max_api_keys: number;
+  };
+  tier: string;
+  reset_date: string;
+  current_period: {
+    start: string;
+    end: string;
+  };
+}
+
 const Dashboard: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
+  const [apiCapabilities, setApiCapabilities] = useState<APICapabilities | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showNewApiKey, setShowNewApiKey] = useState(false);
@@ -74,11 +115,12 @@ const Dashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
+        console.log('❌ No token found, redirecting to login');
         window.location.href = '/login';
         return;
       }
 
-      const [profileRes, jobsRes, keysRes] = await Promise.all([
+      const [profileRes, jobsRes, keysRes, usageRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/auth/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
@@ -87,11 +129,22 @@ const Dashboard: React.FC = () => {
         }),
         fetch(`${API_BASE_URL}/api/keys`, {
           headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE_URL}/api/auth/usage`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
 
+      console.log('📊 API Response Status:', {
+        profile: profileRes.status,
+        jobs: jobsRes.status,
+        keys: keysRes.status,
+        usage: usageRes.status
+      });
+
       // Check for authentication errors
-      if (profileRes.status === 401 || jobsRes.status === 401 || keysRes.status === 401) {
+      if (profileRes.status === 401 || jobsRes.status === 401 || keysRes.status === 401 || usageRes.status === 401) {
+        console.log('🚫 Authentication failed, clearing tokens');
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
@@ -101,22 +154,42 @@ const Dashboard: React.FC = () => {
 
       if (profileRes.ok) {
         const profileData = await profileRes.json();
-        setProfile(profileData);
+        setProfile(profileData.user || profileData);
+      } else {
+        console.log('❌ Profile request failed:', profileRes.status);
       }
 
       if (jobsRes.ok) {
         const jobsData = await jobsRes.json();
         setJobs(jobsData.jobs || []);
+      } else {
+        console.log('❌ Jobs request failed:', jobsRes.status);
       }
 
       if (keysRes.ok) {
         const keysData = await keysRes.json();
         setApiKeys(keysData.api_keys || []);
+      } else {
+        console.log('❌ Keys request failed:', keysRes.status);
+      }
+
+      if (usageRes.ok) {
+        const usageData = await usageRes.json();
+        setUsageStats(usageData);
+      } else {
+        console.log('❌ Usage request failed:', usageRes.status);
+      }
+
+      // Skip API capabilities for now
+      try {
+        // API capabilities endpoint has different format
+      } catch (error) {
+        console.error('Failed to fetch API capabilities:', error);
       }
 
       setLoading(false);
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('❌ Failed to fetch dashboard data:', error);
       setLoading(false);
     }
   };
@@ -245,12 +318,81 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const getSubscriptionIcon = (tier: string) => {
+  const getSubscriptionIcon = (tier: string | undefined) => {
+    if (!tier) return null;
+    
     switch (tier.toLowerCase()) {
       case 'basic': return <Zap className="h-5 w-5 text-blue-500" />;
       case 'pro': return <Shield className="h-5 w-5 text-purple-500" />;
       case 'enterprise': return <Crown className="h-5 w-5 text-amber-500" />;
       default: return null;
+    }
+  };
+
+  const getProcessingMethod = (tier: string | undefined) => {
+    if (!tier) return 'Loading...';
+    
+    switch (tier.toLowerCase()) {
+      case 'free':
+      case 'basic':
+        return 'Regex & Keyword Detection';
+      case 'pro':
+        return 'Advanced AI Detection (Coming Soon)';
+      case 'enterprise':
+        return 'Custom AI Models (Coming Soon)';
+      default:
+        return 'Regex & Keyword Detection';
+    }
+  };
+
+  const getLanguageSupport = (tier: string) => {
+    switch (tier.toLowerCase()) {
+      case 'free':
+      case 'basic':
+        return {
+          current: ['English'],
+          comingSoon: ['Hindi', 'Hinglish', 'Urdu']
+        };
+      case 'pro':
+      case 'enterprise':
+        return {
+          current: ['English'],
+          comingSoon: ['Hindi', 'Hinglish', 'Urdu', 'Multiple Languages']
+        };
+      default:
+        return {
+          current: ['English'],
+          comingSoon: ['Hindi', 'Hinglish', 'Urdu']
+        };
+    }
+  };
+
+  const getTierLanguageSupport = (tier: string | undefined) => {
+    if (!tier) {
+      return {
+        current: ['English'],
+        comingSoon: ['Hindi', 'Hinglish', 'Urdu']
+      };
+    }
+    
+    switch (tier.toLowerCase()) {
+      case 'free':
+      case 'basic':
+        return {
+          current: ['English'],
+          comingSoon: ['Hindi', 'Hinglish', 'Urdu']
+        };
+      case 'pro':
+      case 'enterprise':
+        return {
+          current: ['English'],
+          comingSoon: ['Hindi', 'Hinglish', 'Urdu', 'Tamil', 'Telugu', 'Bengali']
+        };
+      default:
+        return {
+          current: ['English'],
+          comingSoon: ['Hindi', 'Hinglish', 'Urdu']
+        };
     }
   };
 
@@ -266,8 +408,44 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          {/* Professional SaaS Loading Animation */}
+          <div className="relative">
+            {/* Outer rotating ring */}
+            <div className="w-20 h-20 border-4 border-blue-200 rounded-full animate-spin border-t-blue-500 mx-auto"></div>
+            
+            {/* Inner pulsing dot */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
+            </div>
+            
+            {/* Brand icon overlay */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <Shield className="h-6 w-6 text-blue-600 animate-pulse" />
+            </div>
+          </div>
+          
+          {/* Loading text with typing animation */}
+          <div className="mt-6 space-y-2">
+            <h3 className="text-xl font-semibold text-gray-800">Loading Dashboard</h3>
+            <div className="flex items-center justify-center space-x-1">
+              <span className="text-gray-600">Preparing your analytics</span>
+              <div className="flex space-x-1">
+                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
+                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Progress bar simulation */}
+          <div className="mt-4 w-64 mx-auto">
+            <div className="bg-gray-200 rounded-full h-1.5">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1.5 rounded-full animate-pulse" style={{width: '70%'}}></div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -286,7 +464,7 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const usagePercentage = profile.monthly_limit > 0 
+  const usagePercentage = profile?.monthly_limit > 0 
     ? (profile.usage_count / profile.monthly_limit) * 100 
     : 0;
 
@@ -296,20 +474,23 @@ const Dashboard: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {profile.name}</p>
+          <p className="text-gray-600">Welcome back, {profile?.name || 'User'}</p>
         </div>
 
         {/* Overview Cards */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Subscription</p>
                   <div className="flex items-center mt-1">
-                    {getSubscriptionIcon(profile.subscription_tier)}
+                    {getSubscriptionIcon(profile?.subscription_tier)}
                     <p className="text-2xl font-bold text-gray-900 ml-2">
-                      {profile.subscription_tier.charAt(0).toUpperCase() + profile.subscription_tier.slice(1)}
+                      {profile?.subscription_tier ? 
+                        profile.subscription_tier.charAt(0).toUpperCase() + profile.subscription_tier.slice(1) 
+                        : 'Loading...'
+                      }
                     </p>
                   </div>
                 </div>
@@ -322,23 +503,11 @@ const Dashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Usage This Month</p>
+                  <p className="text-sm font-medium text-gray-600">Total Uploads</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {profile.usage_count} / {profile.monthly_limit === -1 ? '∞' : profile.monthly_limit}
+                    {usageStats?.usage?.upload?.current || 0} / {usageStats?.usage?.upload?.limit || 0}
                   </p>
-                  <Progress value={usagePercentage} className="mt-2" />
-                </div>
-                <BarChart3 className="h-8 w-8 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Jobs</p>
-                  <p className="text-2xl font-bold text-gray-900">{jobs.length}</p>
+                  <Progress value={usageStats?.usage?.upload?.percentage || 0} className="mt-2" />
                 </div>
                 <FileVideo className="h-8 w-8 text-gray-400" />
               </div>
@@ -349,10 +518,175 @@ const Dashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">API Keys</p>
-                  <p className="text-2xl font-bold text-gray-900">{apiKeys.length}</p>
+                  <p className="text-sm font-medium text-gray-600">API Processing</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {usageStats?.usage?.processing?.current || 0} / {usageStats?.usage?.processing?.limit || 0}
+                  </p>
+                  <Progress value={usageStats?.usage?.processing?.percentage || 0} className="mt-2" />
+                </div>
+                <BarChart3 className="h-8 w-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">API Keys Used</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {usageStats?.usage?.api_keys?.current || 0} / {usageStats?.usage?.api_keys?.limit || 0}
+                  </p>
+                  <Progress value={usageStats?.usage?.api_keys?.percentage || 0} className="mt-2" />
                 </div>
                 <Key className="h-8 w-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Detailed Usage Statistics */}
+        {usageStats && (
+          <div className="mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="h-5 w-5 mr-2" />
+                  Monthly Usage Statistics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-600">Total Uploads</span>
+                      <span className="text-gray-900">
+                        {usageStats.usage.upload.current} / {usageStats.usage.upload.limit}
+                      </span>
+                    </div>
+                    <Progress value={usageStats.usage.upload.percentage} className="h-2" />
+                    <p className="text-xs text-gray-500">
+                      {usageStats.usage.upload.percentage.toFixed(1)}% used
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-600">API Processing</span>
+                      <span className="text-gray-900">
+                        {usageStats.usage.processing.current} / {usageStats.usage.processing.limit}
+                      </span>
+                    </div>
+                    <Progress value={usageStats.usage.processing.percentage} className="h-2" />
+                    <p className="text-xs text-gray-500">
+                      {usageStats.usage.processing.percentage.toFixed(1)}% used
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-600">General API Calls</span>
+                      <span className="text-gray-900">
+                        {usageStats.usage.general.current} / {usageStats.usage.general.limit}
+                      </span>
+                    </div>
+                    <Progress value={usageStats.usage.general.percentage} className="h-2" />
+                    <p className="text-xs text-gray-500">
+                      {usageStats.usage.general.percentage.toFixed(1)}% used
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-600">API Keys</span>
+                      <span className="text-gray-900">
+                        {usageStats.usage.api_keys.current} / {usageStats.usage.api_keys.limit}
+                      </span>
+                    </div>
+                    <Progress value={usageStats.usage.api_keys.percentage} className="h-2" />
+                    <p className="text-xs text-gray-500">
+                      {usageStats.usage.api_keys.percentage.toFixed(1)}% used
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 pt-4 border-t border-gray-200 space-y-1">
+                  <div className="flex justify-between items-center text-sm">
+                    <div className="flex items-center">
+                      <Calendar className="h-4 w-4 mr-1 text-gray-400" />
+                      <span className="text-gray-600">Monthly usage period:</span>
+                    </div>
+                    <span className="text-gray-900">
+                      {new Date(usageStats.current_period.start).toLocaleDateString()} - {new Date(usageStats.current_period.end).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Usage resets monthly on:</span>
+                    <span className="text-gray-900 font-medium">
+                      {new Date(usageStats.reset_date).toLocaleDateString()} (1st of each month)
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Processing Method & Language Support */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Settings className="h-5 w-5 mr-2" />
+                Processing Method
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-lg font-semibold text-gray-900">
+                  {getProcessingMethod(profile?.subscription_tier)}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Current method for your {profile?.subscription_tier || 'current'} tier
+                </p>
+                {(profile?.subscription_tier === 'pro' || profile?.subscription_tier === 'enterprise') && (
+                  <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+                    Available in Phase 2
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Globe className="h-5 w-5 mr-2" />
+                Language Support
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Currently Supported:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {getTierLanguageSupport(profile?.subscription_tier).current.map((lang) => (
+                      <Badge key={lang} variant="default" className="bg-green-100 text-green-800">
+                        {lang}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Coming Soon:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {getTierLanguageSupport(profile?.subscription_tier).comingSoon.map((lang) => (
+                      <Badge key={lang} variant="outline" className="bg-orange-50 text-orange-600 border-orange-200">
+                        {lang}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -590,15 +924,15 @@ const Dashboard: React.FC = () => {
                 <CardContent className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-600">Email</label>
-                    <p className="text-gray-900">{profile.email}</p>
+                    <p className="text-gray-900">{profile?.email || 'Loading...'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Name</label>
-                    <p className="text-gray-900">{profile.name}</p>
+                    <p className="text-gray-900">{profile?.name || 'Loading...'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Member Since</label>
-                    <p className="text-gray-900">{new Date(profile.created_at).toLocaleDateString()}</p>
+                    <p className="text-gray-900">{profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Loading...'}</p>
                   </div>
                   <Button variant="outline" className="w-full">
                     Edit Profile
@@ -617,15 +951,15 @@ const Dashboard: React.FC = () => {
                   <div>
                     <label className="text-sm font-medium text-gray-600">Current Plan</label>
                     <div className="flex items-center mt-1">
-                      {getSubscriptionIcon(profile.subscription_tier)}
-                      <p className="text-gray-900 ml-2 capitalize">{profile.subscription_tier}</p>
+                      {getSubscriptionIcon(profile?.subscription_tier)}
+                      <p className="text-gray-900 ml-2 capitalize">{profile?.subscription_tier || 'Loading...'}</p>
                     </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Status</label>
-                    <p className="text-gray-900 capitalize">{profile.subscription_status}</p>
+                    <p className="text-gray-900 capitalize">{profile?.subscription_status || 'Loading...'}</p>
                   </div>
-                  {profile.subscription_expires_at && (
+                  {profile?.subscription_expires_at && (
                     <div>
                       <label className="text-sm font-medium text-gray-600">Expires</label>
                       <p className="text-gray-900">{new Date(profile.subscription_expires_at).toLocaleDateString()}</p>

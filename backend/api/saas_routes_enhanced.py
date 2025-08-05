@@ -15,6 +15,20 @@ import os
 import hmac
 import hashlib
 
+# Import rate limiter (will be initialized after models are available)
+rate_limiter = None
+get_rate_limit_headers = None
+
+def init_rate_limiter():
+    """Initialize rate limiter with models."""
+    global rate_limiter, get_rate_limit_headers
+    from services.rate_limiter import RateLimiter, get_rate_limit_headers as _get_headers
+    from services.rate_limiter import init_rate_limiter as _init
+    
+    _init(db, APIKey, User)
+    rate_limiter = RateLimiter()
+    get_rate_limit_headers = _get_headers
+
 saas_bp = Blueprint('saas', __name__, url_prefix='/api')
 logger = logging.getLogger(__name__)
 
@@ -70,10 +84,10 @@ PLAN_CONFIGS = {
 }
 
 def api_key_required(f):
-    """Decorator to require API key authentication."""
+    """Decorator to require API key authentication with rate limiting."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        api_key = request.headers.get('X-API-Key')
+        api_key = request.headers.get('X-API-Key') or request.headers.get('Authorization', '').replace('Bearer ', '')
         if not api_key:
             return jsonify({'error': 'API key is required'}), 401
         
@@ -90,16 +104,45 @@ def api_key_required(f):
         if not user.is_active:
             return jsonify({'error': 'User account is inactive'}), 403
         
-        # Update last used timestamp
-        key_obj.last_used = datetime.utcnow()
-        key_obj.usage_count += 1
-        db.session.commit()
+        # Check rate limit
+        endpoint_type = getattr(f, 'endpoint_type', 'general')
+        is_allowed, retry_after, current_usage, limit_info = rate_limiter.check_rate_limit(
+            key_obj, endpoint_type
+        )
+        
+        if not is_allowed:
+            response = jsonify({
+                'error': 'Rate limit exceeded',
+                'message': limit_info,
+                'retry_after': retry_after,
+                'current_usage': current_usage
+            })
+            response.status_code = 429
+            response.headers['Retry-After'] = str(retry_after)
+            return response
         
         # Add to request context
         request.current_user = user
         request.current_api_key = key_obj
+        request.rate_limit_info = limit_info
         
-        return f(*args, **kwargs)
+        # Call the function
+        result = f(*args, **kwargs)
+        
+        # Add rate limit headers to response
+        if hasattr(result, 'headers'):
+            headers = get_rate_limit_headers(key_obj)
+            result.headers.update(headers)
+        elif isinstance(result, tuple):
+            # Handle tuple responses (data, status_code, headers)
+            if len(result) == 3:
+                headers = get_rate_limit_headers(key_obj)
+                result[2].update(headers)
+            else:
+                headers = get_rate_limit_headers(key_obj)
+                result = (result[0], result[1], headers)
+        
+        return result
     return decorated_function
 
 @saas_bp.route('/keys', methods=['GET'])
@@ -325,8 +368,27 @@ def get_usage():
             Job.created_at < current_month
         ).all()
         
-        # API key usage
+        # API key usage with rate limiting info
         api_keys = APIKey.query.filter_by(user_id=user.id).all()
+        api_key_data = []
+        
+        for key in api_keys:
+            if key.is_active:
+                # Get rate limit stats for each endpoint type
+                general_stats = rate_limiter.get_usage_stats(key, 'general')
+                processing_stats = rate_limiter.get_usage_stats(key, 'processing') 
+                upload_stats = rate_limiter.get_usage_stats(key, 'upload')
+                
+                api_key_data.append({
+                    'name': key.name,
+                    'usage_count': key.usage_count,
+                    'last_used': key.last_used.isoformat() if key.last_used else None,
+                    'rate_limits': {
+                        'general': general_stats,
+                        'processing': processing_stats,
+                        'upload': upload_stats
+                    }
+                })
         
         return jsonify({
             'current_month': {
@@ -341,20 +403,41 @@ def get_usage():
                 'failed_jobs': len([j for j in last_month_jobs if j.status == 'failed']),
                 'processing_time': sum(j.processing_time or 0 for j in last_month_jobs)
             },
-            'api_keys': [
-                {
-                    'name': key.name,
-                    'usage_count': key.usage_count,
-                    'last_used': key.last_used.isoformat() if key.last_used else None
-                }
-                for key in api_keys if key.is_active
-            ],
+            'api_keys': api_key_data,
             'limits': user.get_plan_limits()
         }), 200
         
     except Exception as e:
         logger.error(f"Get usage error: {str(e)}")
         return jsonify({'error': 'Failed to get usage'}), 500
+
+@saas_bp.route('/rate-limit-status', methods=['GET'])
+@api_key_required
+def get_rate_limit_status():
+    """Check current rate limit status for the API key."""
+    try:
+        api_key = request.current_api_key
+        user = request.current_user
+        
+        # Get rate limit stats for all endpoint types
+        stats = {}
+        endpoint_types = ['general', 'processing', 'upload']
+        
+        for endpoint_type in endpoint_types:
+            stats[endpoint_type] = rate_limiter.get_usage_stats(api_key, endpoint_type)
+        
+        return jsonify({
+            'api_key_id': api_key.id,
+            'api_key_name': api_key.name,
+            'user_tier': user.subscription_tier,
+            'rate_limit_status': stats,
+            'total_requests': api_key.usage_count,
+            'last_used': api_key.last_used.isoformat() if api_key.last_used else None
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Rate limit status error: {str(e)}")
+        return jsonify({'error': 'Failed to get rate limit status'}), 500
 
 @saas_bp.route('/webhook/razorpay', methods=['POST'])
 def razorpay_webhook():
@@ -431,6 +514,9 @@ def razorpay_webhook():
 @api_key_required  
 def api_process_video():
     """Process video via API with API key authentication."""
+    # Mark this as a processing endpoint for rate limiting
+    api_process_video.endpoint_type = 'processing'
+    
     try:
         user = request.current_user
         api_key = request.current_api_key

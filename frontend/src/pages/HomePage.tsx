@@ -13,10 +13,19 @@ import {
   ArrowRight,
   Users,
   Clock,
-  Award
+  Award,
+  User,
+  Settings
 } from 'lucide-react';
 
+// Simple auth check
+const isAuthenticated = () => {
+  return !!localStorage.getItem('access_token');
+};
+
 const HomePage: React.FC = () => {
+  const loggedIn = isAuthenticated();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -32,9 +41,30 @@ const HomePage: React.FC = () => {
               <Button variant="ghost" onClick={() => window.location.href = '/pricing'}>
                 Pricing
               </Button>
-              <Button onClick={() => window.location.href = '/login'}>
-                Get Started
-              </Button>
+              {loggedIn ? (
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => window.location.href = '/dashboard'}>
+                    <User className="h-4 w-4 mr-2" />
+                    Dashboard
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      localStorage.removeItem('access_token');
+                      localStorage.removeItem('refresh_token');
+                      localStorage.removeItem('user');
+                      window.location.reload();
+                    }}
+                  >
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => window.location.href = '/login'}>
+                  Get Started
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -54,8 +84,8 @@ const HomePage: React.FC = () => {
           </h1>
           
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Automatically detect and filter profanity in videos using advanced AI. 
-            Support for Hindi and English with real-time processing and custom wordlists.
+            Automatically detect and filter profanity in videos using regex and keyword detection. 
+            Currently supporting English language with advanced AI features coming soon.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -91,9 +121,9 @@ const HomePage: React.FC = () => {
             <Card className="border-none shadow-lg">
               <CardHeader>
                 <Brain className="h-12 w-12 text-blue-500 mb-4" />
-                <CardTitle>AI-Powered Detection</CardTitle>
+                <CardTitle>Regex & Keyword Detection</CardTitle>
                 <CardDescription>
-                  Advanced machine learning models trained on diverse datasets for accurate profanity detection
+                  Reliable pattern-matching and keyword-based profanity detection for accurate content filtering
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -101,9 +131,9 @@ const HomePage: React.FC = () => {
             <Card className="border-none shadow-lg">
               <CardHeader>
                 <Globe className="h-12 w-12 text-green-500 mb-4" />
-                <CardTitle>Multi-Language Support</CardTitle>
+                <CardTitle>English Language Support</CardTitle>
                 <CardDescription>
-                  Native support for Hindi and English with context-aware detection across languages
+                  Full English language support with multi-language detection coming in advanced tiers
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -111,9 +141,9 @@ const HomePage: React.FC = () => {
             <Card className="border-none shadow-lg">
               <CardHeader>
                 <Zap className="h-12 w-12 text-purple-500 mb-4" />
-                <CardTitle>Real-Time Processing</CardTitle>
+                <CardTitle>Fast Processing</CardTitle>
                 <CardDescription>
-                  Fast video processing with automatic censoring and customizable replacement options
+                  Quick video processing with automatic censoring using proven detection methods
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -123,7 +153,7 @@ const HomePage: React.FC = () => {
                 <Shield className="h-12 w-12 text-amber-500 mb-4" />
                 <CardTitle>Custom Wordlists</CardTitle>
                 <CardDescription>
-                  Add your own words and phrases to customize detection for your specific needs
+                  Advanced wordlist customization available in Pro and Enterprise tiers (Coming Soon)
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -131,9 +161,9 @@ const HomePage: React.FC = () => {
             <Card className="border-none shadow-lg">
               <CardHeader>
                 <Users className="h-12 w-12 text-red-500 mb-4" />
-                <CardTitle>Team Collaboration</CardTitle>
+                <CardTitle>API Access</CardTitle>
                 <CardDescription>
-                  API access and team management features for businesses and content agencies
+                  Programmatic access for businesses starting with Basic tier and above
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -143,7 +173,7 @@ const HomePage: React.FC = () => {
                 <Award className="h-12 w-12 text-indigo-500 mb-4" />
                 <CardTitle>Enterprise Ready</CardTitle>
                 <CardDescription>
-                  Scalable infrastructure with 99.9% uptime and dedicated support for large volumes
+                  Scalable infrastructure with advanced features in development for large-scale usage
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -178,9 +208,9 @@ const HomePage: React.FC = () => {
               <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
                 <span className="text-2xl font-bold text-green-600">2</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">AI Processing</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Content Analysis</h3>
               <p className="text-gray-600">
-                Our AI analyzes the audio track, detects profanity, and marks inappropriate content.
+                Our system analyzes the audio track using regex and keyword matching to identify inappropriate content.
               </p>
             </div>
 

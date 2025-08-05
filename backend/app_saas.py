@@ -148,8 +148,15 @@ def create_app():
                 'subscription_billing',
                 'multi_language_detection',
                 'video_processing',
-                'background_jobs'
-            ]
+                'nsfw_content_detection',
+                'real_time_processing'
+            ],
+            'processing_methods': {
+                'current': 'regex_keyword_matching',
+                'available_models': ['whisper_base'],
+                'coming_soon': ['advanced_ai_ml', 'custom_training'],
+                'supported_languages': ['english', 'hindi', 'hinglish']
+            }
         }), 200 if db_status == 'healthy' else 503
     
     # API documentation endpoint
@@ -212,27 +219,42 @@ def create_app():
             ],
             'limits': {
                 'free': {
-                    'monthly_videos': 10,
+                    'monthly_videos': 3,
                     'max_file_size': '100MB',
-                    'max_duration': '5 minutes'
+                    'max_duration': '5 minutes',
+                    'processing': 'regex + keyword matching',
+                    'whisper_model': 'base'
                 },
                 'basic': {
-                    'monthly_videos': 100,
-                    'max_file_size': '500MB',
+                    'monthly_videos': 30,
+                    'total_storage': '1GB',
+                    'max_file_size': '100MB',
                     'max_duration': '30 minutes',
+                    'processing': 'regex + keyword matching',
+                    'whisper_model': 'base',
                     'price': '₹999/month'
                 },
                 'pro': {
                     'monthly_videos': 500,
+                    'total_storage': '10GB',
                     'max_file_size': '1GB',
                     'max_duration': '60 minutes',
-                    'price': '₹2999/month'
+                    'processing': 'advanced AI + ML models',
+                    'whisper_model': 'large',
+                    'price': '₹2999/month',
+                    'status': 'coming_soon',
+                    'expected_release': 'Q3 2025'
                 },
                 'enterprise': {
                     'monthly_videos': 'unlimited',
+                    'total_storage': 'unlimited',
                     'max_file_size': '5GB',
                     'max_duration': '180 minutes',
-                    'price': '₹9999/month'
+                    'processing': 'custom AI training + real-time detection',
+                    'whisper_model': 'large-v3',
+                    'price': '₹9999/month',
+                    'status': 'coming_soon',
+                    'expected_release': 'Q4 2025'
                 }
             }
         })
