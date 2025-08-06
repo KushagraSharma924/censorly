@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import Supabase service
-from services.supabase_service_new import supabase_service
+from services.supabase_service import supabase_service
 
 # Import route blueprints
 try:

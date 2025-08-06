@@ -37,80 +37,95 @@ class SupabaseService:
             raise Exception("Supabase client library not installed. Run: pip install supabase")
         
         self.supabase_url = os.environ.get('SUPABASE_URL')
-        self.supabase_key = os.environ.get('SUPABASE_KEY')
+        self.supabase_anon_key = os.environ.get('SUPABASE_KEY')  # For auth operations
+        self.supabase_service_key = os.environ.get('SUPABASE_SERVICE_KEY')  # For admin operations
         
-        if not self.supabase_url or not self.supabase_key:
-            raise Exception("SUPABASE_URL and SUPABASE_KEY environment variables are required")
+        if not self.supabase_url or not self.supabase_service_key:
+            raise Exception("SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required")
         
-        self.client: Client = create_client(self.supabase_url, self.supabase_key)
-        logger.info("Supabase service initialized successfully")
+        # Use service key for database operations (bypasses RLS)
+        self.client = create_client(self.supabase_url, self.supabase_service_key)
+        logger.info("Supabase service initialized with service key")
     
     # User Management
-    async def create_user(self, email: str, password: str, full_name: str = None) -> Dict[str, Any]:
-        """Create a new user with Supabase Auth."""
+    def create_user(self, email: str, password: str, full_name: str = None) -> Dict[str, Any]:
+        """Create a new user with simple password storage (no Supabase Auth)."""
         try:
-            # Create user with Supabase Auth
-            auth_response = self.client.auth.sign_up({
-                "email": email,
-                "password": password,
-                "options": {
-                    "data": {
-                        "full_name": full_name
-                    }
-                }
-            })
+            # Check if user already exists
+            existing_user = self.get_user_by_email(email)
+            if existing_user:
+                return {"success": False, "error": "User already exists"}
             
-            if auth_response.user:
-                # Insert additional user data into our users table
-                user_data = {
-                    "id": auth_response.user.id,
-                    "email": email,
-                    "full_name": full_name,
-                    "password_hash": generate_password_hash(password),
-                    "subscription_tier": "free",
-                    "is_active": True,
-                    "is_verified": False
-                }
-                
-                result = self.client.table("users").insert(user_data).execute()
-                
+            # Create user data
+            user_data = {
+                "id": str(uuid.uuid4()),
+                "email": email,
+                "full_name": full_name,
+                "password_hash": generate_password_hash(password),
+                "subscription_tier": "free",
+                "is_active": True,
+                "is_verified": False,
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
+            # Insert user into database
+            result = self.client.table("users").insert(user_data).execute()
+            
+            if result.data:
+                logger.info(f"User created successfully: {email}")
                 return {
                     "success": True,
-                    "user": result.data[0] if result.data else None,
-                    "auth_user": auth_response.user
+                    "user": result.data[0]
                 }
-            
-            return {"success": False, "error": "User creation failed"}
-            
+            else:
+                return {"success": False, "error": "Failed to create user"}
+                
         except Exception as e:
             logger.error(f"User creation error: {str(e)}")
             return {"success": False, "error": str(e)}
     
     def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
-        """Authenticate user with Supabase Auth."""
+        """Authenticate user with password verification (no Supabase Auth)."""
         try:
-            auth_response = self.client.auth.sign_in_with_password({
-                "email": email,
-                "password": password
-            })
+            # Get user from database
+            user_data = self.get_user_by_email(email)
             
-            if auth_response.user:
-                # Get user data from our users table
-                user_data = self.client.table("users").select("*").eq("id", auth_response.user.id).execute()
-                
-                # Update last login
-                self.client.table("users").update({
-                    "last_login": datetime.utcnow().isoformat()
-                }).eq("id", auth_response.user.id).execute()
-                
-                return {
-                    "success": True,
-                    "user": user_data.data[0] if user_data.data else None,
-                    "session": auth_response.session,
-                    "access_token": auth_response.session.access_token if auth_response.session else None
+            if not user_data:
+                return {"success": False, "error": "Invalid credentials"}
+            
+            # Check if user is active
+            if not user_data.get('is_active', True):
+                return {"success": False, "error": "Account is deactivated"}
+            
+            # Verify password
+            if not check_password_hash(user_data['password_hash'], password):
+                return {"success": False, "error": "Invalid credentials"}
+            
+            # Update last login
+            self.client.table("users").update({
+                "last_login": datetime.utcnow().isoformat()
+            }).eq("id", user_data['id']).execute()
+            
+            # Generate JWT tokens
+            from flask_jwt_extended import create_access_token, create_refresh_token
+            
+            access_token = create_access_token(
+                identity=user_data['id'],
+                additional_claims={
+                    'email': user_data['email'],
+                    'subscription_tier': user_data['subscription_tier']
                 }
+            )
             
-            return {"success": False, "error": "Invalid credentials"}
+            refresh_token = create_refresh_token(identity=user_data['id'])
+            
+            return {
+                "success": True,
+                "user": user_data,
+                "access_token": access_token,
+                "refresh_token": refresh_token
+            }
             
         except Exception as e:
             logger.error(f"Authentication error: {str(e)}")
@@ -145,176 +160,267 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Update user error: {str(e)}")
             return {"success": False, "error": str(e)}
-
-
-def get_service_client() -> Client:
-    """Get Supabase client with service role key for admin operations."""
-    if not HAS_SUPABASE:
-        raise Exception("Supabase client library not installed. Run: pip install supabase")
-        
-    supabase_url = os.environ.get('SUPABASE_URL')
-    service_key = os.environ.get('SUPABASE_SERVICE_KEY')
     
-    if not supabase_url or not service_key:
-        raise Exception("SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required")
-    
-    return create_client(supabase_url, service_key)
-
-
-class SupabaseService:
-    """Service class for Supabase operations."""
-    
-    def __init__(self):
+    # Job Management
+    def create_job(self, user_id: str, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new job."""
         try:
-            self.client = get_supabase_client()
-            self.service_client = get_service_client()
-            self.available = True
-        except Exception as e:
-            logger.warning(f"Supabase service initialization failed: {e}")
-            self.client = None
-            self.service_client = None
-            self.available = False
-    
-    def test_connection(self) -> bool:
-        """Test Supabase connection."""
-        if not self.available or not self.client:
-            return False
+            job_data['user_id'] = user_id
+            job_data['id'] = str(uuid.uuid4())
             
-        try:
-            # Test with a simple query
-            result = self.client.table('users').select('id').limit(1).execute()
-            return True
+            result = self.client.table("jobs").insert(job_data).execute()
+            return {
+                "success": True,
+                "job": result.data[0] if result.data else None
+            }
         except Exception as e:
-            logger.error(f"Supabase connection test failed: {e}")
-            return False
+            logger.error(f"Create job error: {str(e)}")
+            return {"success": False, "error": str(e)}
     
-    def create_user(self, email: str, password: str, **kwargs) -> Dict[str, Any]:
-        """Create a new user in Supabase Auth."""
+    def get_job(self, job_id: str, user_id: str = None) -> Optional[Dict[str, Any]]:
+        """Get job by ID."""
         try:
-            response = self.service_client.auth.admin.create_user({
-                "email": email,
-                "password": password,
-                "email_confirm": True,
-                "user_metadata": kwargs
-            })
-            return response
+            query = self.client.table("jobs").select("*").eq("id", job_id)
+            if user_id:
+                query = query.eq("user_id", user_id)
+            
+            result = query.execute()
+            return result.data[0] if result.data else None
         except Exception as e:
-            logger.error(f"Failed to create user in Supabase: {e}")
-            raise
-    
-    def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Get user by ID from Supabase Auth."""
-        try:
-            response = self.service_client.auth.admin.get_user_by_id(user_id)
-            return response.user if response else None
-        except Exception as e:
-            logger.error(f"Failed to get user by ID: {e}")
+            logger.error(f"Get job error: {str(e)}")
             return None
     
-    def update_user_metadata(self, user_id: str, metadata: Dict[str, Any]) -> bool:
-        """Update user metadata in Supabase Auth."""
+    def get_user_jobs(self, user_id: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get user's jobs with pagination."""
         try:
-            self.service_client.auth.admin.update_user_by_id(
-                user_id, 
-                {"user_metadata": metadata}
-            )
-            return True
+            result = self.client.table("jobs").select("*")\
+                .eq("user_id", user_id)\
+                .order("created_at", desc=True)\
+                .range(offset, offset + limit - 1)\
+                .execute()
+            
+            return result.data or []
         except Exception as e:
-            logger.error(f"Failed to update user metadata: {e}")
-            return False
+            logger.error(f"Get user jobs error: {str(e)}")
+            return []
     
-    def delete_user(self, user_id: str) -> bool:
-        """Delete user from Supabase Auth."""
+    def update_job(self, job_id: str, data: Dict[str, Any], user_id: str = None) -> Dict[str, Any]:
+        """Update job data."""
         try:
-            self.service_client.auth.admin.delete_user(user_id)
-            return True
+            query = self.client.table("jobs").update(data).eq("id", job_id)
+            if user_id:
+                query = query.eq("user_id", user_id)
+            
+            result = query.execute()
+            return {
+                "success": True,
+                "job": result.data[0] if result.data else None
+            }
         except Exception as e:
-            logger.error(f"Failed to delete user: {e}")
-            return False
+            logger.error(f"Update job error: {str(e)}")
+            return {"success": False, "error": str(e)}
     
-    def store_file(self, bucket: str, file_path: str, file_data: bytes) -> Optional[str]:
-        """Store file in Supabase Storage."""
+    # API Key Management
+    def create_api_key(self, user_id: str, name: str) -> Dict[str, Any]:
+        """Create a new API key."""
         try:
-            response = self.client.storage.from_(bucket).upload(file_path, file_data)
-            if response:
-                return self.client.storage.from_(bucket).get_public_url(file_path)
+            # Generate API key
+            raw_key = f"apf_{secrets.token_urlsafe(32)}"
+            key_prefix = raw_key[:10]
+            key_hash = generate_password_hash(raw_key)
+            
+            api_key_data = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "name": name,
+                "key_prefix": key_prefix,
+                "key_hash": key_hash,
+                "is_active": True,
+                "usage_count": 0
+            }
+            
+            result = self.client.table("api_keys").insert(api_key_data).execute()
+            
+            if result.data:
+                return {
+                    "success": True,
+                    "api_key": result.data[0],
+                    "raw_key": raw_key  # Only return this once
+                }
+            
+            return {"success": False, "error": "API key creation failed"}
+            
+        except Exception as e:
+            logger.error(f"Create API key error: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    def verify_api_key(self, raw_key: str) -> Optional[Dict[str, Any]]:
+        """Verify an API key and return the key data if valid."""
+        try:
+            # Get all active API keys
+            result = self.client.table("api_keys").select("*").eq("is_active", True).execute()
+            
+            for key_data in result.data or []:
+                if check_password_hash(key_data['key_hash'], raw_key):
+                    # Update usage count and last used
+                    self.client.table("api_keys").update({
+                        "usage_count": key_data['usage_count'] + 1,
+                        "last_used": datetime.utcnow().isoformat()
+                    }).eq("id", key_data['id']).execute()
+                    
+                    return key_data
+            
             return None
         except Exception as e:
-            logger.error(f"Failed to store file: {e}")
+            logger.error(f"Verify API key error: {str(e)}")
             return None
     
-    def get_file_url(self, bucket: str, file_path: str) -> Optional[str]:
-        """Get public URL for file in Supabase Storage."""
+    def get_user_api_keys(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get user's API keys."""
         try:
-            return self.client.storage.from_(bucket).get_public_url(file_path)
+            result = self.client.table("api_keys").select("*")\
+                .eq("user_id", user_id)\
+                .order("created_at", desc=True)\
+                .execute()
+            
+            return result.data or []
         except Exception as e:
-            logger.error(f"Failed to get file URL: {e}")
+            logger.error(f"Get user API keys error: {str(e)}")
+            return []
+    
+    def delete_api_key(self, key_id: str, user_id: str) -> Dict[str, Any]:
+        """Delete an API key."""
+        try:
+            result = self.client.table("api_keys").delete()\
+                .eq("id", key_id)\
+                .eq("user_id", user_id)\
+                .execute()
+            
+            return {"success": True}
+        except Exception as e:
+            logger.error(f"Delete API key error: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    # Subscription Management
+    def create_subscription(self, user_id: str, plan_name: str, plan_price: float) -> Dict[str, Any]:
+        """Create a new subscription."""
+        try:
+            subscription_data = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "plan_name": plan_name,
+                "plan_price": plan_price,
+                "status": "pending",
+                "is_active": False,
+                "auto_renew": True
+            }
+            
+            result = self.client.table("subscriptions").insert(subscription_data).execute()
+            return {
+                "success": True,
+                "subscription": result.data[0] if result.data else None
+            }
+        except Exception as e:
+            logger.error(f"Create subscription error: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    def get_user_subscription(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get user's active subscription."""
+        try:
+            result = self.client.table("subscriptions").select("*")\
+                .eq("user_id", user_id)\
+                .eq("is_active", True)\
+                .order("created_at", desc=True)\
+                .limit(1)\
+                .execute()
+            
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Get user subscription error: {str(e)}")
             return None
     
-    def delete_file(self, bucket: str, file_path: str) -> bool:
-        """Delete file from Supabase Storage."""
+    def update_subscription(self, subscription_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update subscription data."""
         try:
-            response = self.client.storage.from_(bucket).remove([file_path])
-            return len(response) > 0
+            result = self.client.table("subscriptions").update(data).eq("id", subscription_id).execute()
+            return {
+                "success": True,
+                "subscription": result.data[0] if result.data else None
+            }
         except Exception as e:
-            logger.error(f"Failed to delete file: {e}")
-            return False
+            logger.error(f"Update subscription error: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    # Training Session Management
+    def create_training_session(self, user_id: str, training_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new training session."""
+        try:
+            training_data['user_id'] = user_id
+            training_data['id'] = str(uuid.uuid4())
+            
+            result = self.client.table("training_sessions").insert(training_data).execute()
+            return {
+                "success": True,
+                "training_session": result.data[0] if result.data else None
+            }
+        except Exception as e:
+            logger.error(f"Create training session error: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    def get_user_training_sessions(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get user's training sessions."""
+        try:
+            result = self.client.table("training_sessions").select("*")\
+                .eq("user_id", user_id)\
+                .order("created_at", desc=True)\
+                .execute()
+            
+            return result.data or []
+        except Exception as e:
+            logger.error(f"Get user training sessions error: {str(e)}")
+            return []
+    
+    # Utility Methods
+    def get_plan_limits(self, subscription_tier: str) -> Dict[str, Any]:
+        """Get plan limits based on subscription tier."""
+        plans = {
+            'free': {
+                'monthly_limit': 10,
+                'max_file_size_mb': 100,
+                'max_video_minutes': 5,
+                'features': ['basic_detection']
+            },
+            'basic': {
+                'monthly_limit': 100,
+                'max_file_size_mb': 500,
+                'max_video_minutes': 30,
+                'features': ['basic_detection', 'api_access']
+            },
+            'pro': {
+                'monthly_limit': 500,
+                'max_file_size_mb': 1000,
+                'max_video_minutes': 60,
+                'features': ['advanced_detection', 'api_access', 'priority_processing']
+            },
+            'enterprise': {
+                'monthly_limit': -1,  # Unlimited
+                'max_file_size_mb': 5000,
+                'max_video_minutes': 180,
+                'features': ['all_features', 'dedicated_support']
+            }
+        }
+        return plans.get(subscription_tier, plans['free'])
 
 
 # Global service instance
-_supabase_service = None
+_supabase_service: Optional[SupabaseService] = None
 
-def get_supabase_service():
-    """Get or create global Supabase service instance."""
+def get_supabase_service() -> SupabaseService:
+    """Get or create the global Supabase service instance."""
     global _supabase_service
     if _supabase_service is None:
         _supabase_service = SupabaseService()
     return _supabase_service
 
-# For backward compatibility
-supabase_service = None  # Will be initialized when first accessed
-
-
-def init_supabase_tables():
-    """Initialize required tables in Supabase if they don't exist."""
-    try:
-        client = get_service_client()
-        
-        # Check if tables exist by querying them
-        tables_to_check = ['users', 'jobs', 'training_sessions']
-        
-        for table in tables_to_check:
-            try:
-                client.table(table).select('*').limit(1).execute()
-                logger.info(f"Table '{table}' exists")
-            except Exception:
-                logger.warning(f"Table '{table}' might not exist - SQLAlchemy will handle creation")
-        
-        return True
-    except Exception as e:
-        logger.error(f"Failed to check Supabase tables: {e}")
-        return False
-
-
-def setup_supabase_storage():
-    """Setup required storage buckets."""
-    try:
-        client = get_service_client()
-        
-        # Create buckets for file storage
-        buckets = ['videos', 'processed-videos', 'models']
-        
-        for bucket in buckets:
-            try:
-                client.storage.create_bucket(bucket, {"name": bucket, "public": False})
-                logger.info(f"Created bucket: {bucket}")
-            except Exception as e:
-                if "already exists" in str(e).lower():
-                    logger.info(f"Bucket '{bucket}' already exists")
-                else:
-                    logger.error(f"Failed to create bucket '{bucket}': {e}")
-        
-        return True
-    except Exception as e:
-        logger.error(f"Failed to setup Supabase storage: {e}")
-        return False
+# Export the global instance
+supabase_service = get_supabase_service()
