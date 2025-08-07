@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import Supabase service
-from services.supabase_service import supabase_service
+from services.supabase_service_new import supabase_service
 
 # Import route blueprints
 try:
@@ -58,24 +58,17 @@ def create_app():
     # Initialize extensions (no SQLAlchemy)
     jwt = JWTManager(app)
     
-    # CORS configuration - Railway friendly
-    cors_origins = [
-        "http://localhost:3000", 
-        "http://localhost:5173", 
-        "http://localhost:8080",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:8080",
-        "https://profanityfilter.ai"
-    ]
-    
-    # Add Railway domain if deployed
-    railway_url = os.getenv('RAILWAY_PUBLIC_DOMAIN')
-    if railway_url:
-        cors_origins.append(f"https://{railway_url}")
-    
+    # CORS configuration
     CORS(app, 
-         origins=cors_origins,
+         origins=[
+             "http://localhost:3000", 
+             "http://localhost:5173", 
+             "http://localhost:8080",
+             "http://127.0.0.1:3000",
+             "http://127.0.0.1:5173",
+             "http://127.0.0.1:8080",
+             "https://profanityfilter.ai"
+         ],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
          allow_headers=[
              "Content-Type", 

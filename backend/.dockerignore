@@ -1,0 +1,63 @@
+# Dockerignore for Phase 1 Backend
+
+# Not needed for Phase 1
+*.not_phase1
+training.not_phase1/
+transformer_test_results.json.not_phase1
+video_processor_v2.py.not_phase1
+celery_app.py.not_phase1
+app.py.not_phase1
+app_saas.py.not_phase1
+
+# Development files
+.env
+.env.local
+.env.development
+.env.test
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git/
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local uploads and processed files
+uploads/
+processed/
+instance/
+logs/
+
+# Development tools
+node_modules/
+*.orig

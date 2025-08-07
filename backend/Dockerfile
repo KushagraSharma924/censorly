@@ -1,45 +1,40 @@
-# Production-ready Dockerfile for AI Profanity Filter SaaS Backend
+# Phase 1 Dockerfile for AI Profanity Filter - Railway Optimized (258MB)
 FROM python:3.9-slim
 
-# Set environment variables
+# Set environment variables for Railway
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    FLASK_APP=app.py \
-    FLASK_ENV=production
+    FLASK_APP=app_supabase.py \
+    FLASK_ENV=production \
+    PORT=8080
 
-# Install system dependencies
+# Install system dependencies (minimal for Phase 1 - no ML compilation needed)
 RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    build-essential \
-    pkg-config \
-    libhdf5-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+    # Copy requirements file
+    COPY requirements-phase1.txt .
+    
+    # Install Python dependencies
+    RUN pip install --no-cache-dir -r requirements-phase1.txt
 
 # Copy application code
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p uploads processed models logs
+RUN mkdir -p uploads processed logs
 
-# Set permissions
-RUN chmod +x . && \
-    chmod 755 uploads processed models logs
-
-# Health check
+# Health check for Railway
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000/api/health')" || exit 1
+    CMD curl -f http://localhost:$PORT/health || exit 1
 
-# Expose port
-EXPOSE 5000
+# Expose port (Railway will set this dynamically)
+EXPOSE $PORT
 
-# Run with Gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "--worker-class", "sync", "app:app"]
+# Run with Gunicorn optimized for Railway
+    # Start the application
+    CMD ["sh", "start.sh"]
