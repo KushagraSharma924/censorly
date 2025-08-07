@@ -1,0 +1,83 @@
+# Git files
+.git/
+.gitignore
+
+# Frontend files (not needed for backend deployment)
+frontend/
+node_modules/
+
+# Documentation
+*.md
+docs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+backend/venv/
+backend/env/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Test files
+*test*
+*Test*
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Data files (large)
+*.pkl
+*.joblib
+*.model
+*.h5
+*.bin
+
+# Training and evaluation data
+backend/data/
+backend/training/
+
+# Instance data
+backend/instance/
+
+# Large model files
+*.safetensors
+*.gguf
+
+# Migrations (handled separately)
+backend/migrations/
+
+# Environment files (security)
+.env
+.env.*
+!.env.example
+
+# Docker files
+Dockerfile.old
+docker-compose.yml

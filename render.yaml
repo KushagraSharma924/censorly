@@ -2,8 +2,7 @@
 name: ai-profanity-filter-backend
 type: web
 env: docker
-dockerfilePath: ./backend/Dockerfile
-dockerContext: ./backend
+dockerfilePath: ./Dockerfile
 region: oregon  # or your preferred region
 
 # Build command (Render will use Dockerfile)
