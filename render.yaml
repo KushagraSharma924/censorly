@@ -10,7 +10,7 @@ region: oregon  # or your preferred region
 # buildCommand: docker build -t profanity-filter .
 
 # Start command is handled by Dockerfile CMD
-# startCommand: gunicorn app_supabase:app
+# startCommand: gunicor app_supabase:app
 
 # Auto-deploy settings
 autoDeploy: true
