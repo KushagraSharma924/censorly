@@ -69,10 +69,10 @@ def create_app():
         "https://profanityfilter.ai"
     ]
     
-    # Add Railway domain if deployed
-    railway_url = os.getenv('RAILWAY_PUBLIC_DOMAIN')
-    if railway_url:
-        cors_origins.append(f"https://{railway_url}")
+    # Add Render domain if deployed
+    render_url = os.getenv('RENDER_EXTERNAL_URL')
+    if render_url:
+        cors_origins.append(render_url)
     
     CORS(app, 
          origins=cors_origins,

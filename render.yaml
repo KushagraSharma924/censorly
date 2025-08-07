@@ -1,0 +1,43 @@
+# Render Configuration for AI Profanity Filter Phase 1
+name: ai-profanity-filter-backend
+type: web
+env: docker
+dockerfilePath: ./backend/Dockerfile
+dockerContext: ./backend
+region: oregon  # or your preferred region
+
+# Build command (Render will use Dockerfile)
+# buildCommand: docker build -t profanity-filter .
+
+# Start command is handled by Dockerfile CMD
+# startCommand: gunicorn app_supabase:app
+
+# Auto-deploy settings
+autoDeploy: true
+branch: main
+
+# Environment variables (set these in Render dashboard)
+envVars:
+  - key: FLASK_ENV
+    value: production
+  - key: PORT
+    value: "10000"
+  - key: SUPABASE_URL
+    sync: false  # Set manually in dashboard
+  - key: SUPABASE_KEY
+    sync: false  # Set manually in dashboard
+  - key: SUPABASE_SERVICE_ROLE_KEY
+    sync: false  # Set manually in dashboard
+  - key: JWT_SECRET_KEY
+    sync: false  # Set manually in dashboard
+
+# Health check endpoint
+healthCheckPath: /health
+
+# Scaling settings
+numInstances: 1
+plan: starter  # Free tier
+
+# Custom domains (optional)
+# domains:
+#   - profanityfilter.ai
