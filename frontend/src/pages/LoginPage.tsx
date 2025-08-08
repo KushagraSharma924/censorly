@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react';
-
-const API_BASE_URL = 'http://localhost:8080';
+import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
 
 interface LoginFormData {
   email: string;
@@ -44,11 +43,9 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.AUTH.LOGIN), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        ...getDefaultFetchOptions(),
         body: JSON.stringify(loginData),
       });
 
@@ -93,11 +90,9 @@ const LoginPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.AUTH.REGISTER), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        ...getDefaultFetchOptions(),
         body: JSON.stringify({
           name: registerData.name,
           email: registerData.email,

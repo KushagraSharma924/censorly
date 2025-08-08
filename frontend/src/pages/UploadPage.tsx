@@ -17,8 +17,7 @@ import {
   AlertCircle,
   Trash2
 } from 'lucide-react';
-
-const API_BASE_URL = 'http://localhost:8080';
+import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
 
 interface UploadedFile {
   file: File;
@@ -65,7 +64,7 @@ const UploadPage: React.FC = () => {
 
       console.log('Starting upload for:', fileData.file.name);
       console.log('Token exists:', !!token);
-      console.log('API URL:', `${API_BASE_URL}/api/process-video`);
+      console.log('API URL:', buildApiUrl(API_ENDPOINTS.VIDEO.PROCESS));
 
       const formData = new FormData();
       formData.append('video', fileData.file);
@@ -112,7 +111,7 @@ const UploadPage: React.FC = () => {
         updateFileStatus(fileData.id, 'failed', 'Network error during upload');
       };
 
-      xhr.open('POST', `${API_BASE_URL}/api/process-video`);
+      xhr.open('POST', buildApiUrl(API_ENDPOINTS.VIDEO.PROCESS));
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.send(formData);
 
@@ -125,7 +124,7 @@ const UploadPage: React.FC = () => {
   const pollJobStatus = async (fileId: string, jobId: string) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}`, {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.STATUS(jobId)), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -178,7 +177,7 @@ const UploadPage: React.FC = () => {
   const downloadFile = async (jobId: string, filename: string) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/api/download/${jobId}`, {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.DOWNLOAD(jobId)), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

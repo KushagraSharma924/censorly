@@ -21,9 +21,8 @@ import {
   Trash2,
   Globe
 } from 'lucide-react';
-import { apiService, APICapabilities } from '@/lib/api-service';
-
-const API_BASE_URL = 'http://localhost:8080';
+// import { apiService, APICapabilities } from '@/lib/api-service';
+import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
 
 interface UserProfile {
   id: string;
@@ -99,7 +98,7 @@ const Dashboard: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
-  const [apiCapabilities, setApiCapabilities] = useState<APICapabilities | null>(null);
+  const [apiCapabilities, setApiCapabilities] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showNewApiKey, setShowNewApiKey] = useState(false);
@@ -121,16 +120,16 @@ const Dashboard: React.FC = () => {
       }
 
       const [profileRes, jobsRes, keysRes, usageRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/auth/profile`, {
+        fetch(buildApiUrl(API_ENDPOINTS.USER.PROFILE), {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`${API_BASE_URL}/api/jobs`, {
+        fetch(buildApiUrl(API_ENDPOINTS.VIDEO.JOBS), {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`${API_BASE_URL}/api/keys`, {
+        fetch(buildApiUrl(API_ENDPOINTS.API_KEYS.LIST), {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`${API_BASE_URL}/api/auth/usage`, {
+        fetch(buildApiUrl(API_ENDPOINTS.USER.USAGE), {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -198,7 +197,7 @@ const Dashboard: React.FC = () => {
     setRefreshing(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/api/jobs`, {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.JOBS), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -215,7 +214,7 @@ const Dashboard: React.FC = () => {
   const downloadFile = async (jobId: string, filename: string) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/api/download/${jobId}`, {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.DOWNLOAD(jobId)), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -247,10 +246,11 @@ const Dashboard: React.FC = () => {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/api/keys`, {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.API_KEYS.CREATE), {
         method: 'POST',
+        ...getDefaultFetchOptions(),
         headers: {
-          'Content-Type': 'application/json',
+          ...getDefaultFetchOptions().headers,
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ name: newApiKeyName.trim() })
@@ -302,7 +302,7 @@ const Dashboard: React.FC = () => {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/api/keys/${keyId}`, {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.API_KEYS.DELETE(keyId)), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

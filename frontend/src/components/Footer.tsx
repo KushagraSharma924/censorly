@@ -1,6 +1,7 @@
 import React from 'react';
 import { Heart, Github, Coffee, Shield, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EXTERNAL_URLS } from '@/config/api';
 
 export const Footer: React.FC = () => {
   return (
@@ -30,7 +31,7 @@ export const Footer: React.FC = () => {
                 <FileText className="w-4 h-4 mr-2" />
                 Terms of Service
               </a>
-              <a href="https://github.com" className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <a href={EXTERNAL_URLS.SOCIAL.GITHUB} className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <Github className="w-4 h-4 mr-2" />
                 Open Source
               </a>

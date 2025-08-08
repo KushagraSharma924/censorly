@@ -1,6 +1,5 @@
 import { useState } from 'react';
-
-const API_BASE_URL = 'http://localhost:8080';
+import { API_ENDPOINTS, buildApiUrl } from '@/config/api';
 
 export interface ProcessingResult {
   success: boolean;
@@ -27,7 +26,7 @@ export const useVideoProcessor = () => {
         setProgress(prev => Math.min(prev + 10, 90));
       }, 500);
 
-      const response = await fetch(`${API_BASE_URL}/process`, {
+      const response = await fetch(buildApiUrl('/process'), {
         method: 'POST',
         body: formData,
         // Don't set Content-Type header - let browser set it with boundary for FormData

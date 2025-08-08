@@ -3,8 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Check, Zap, Shield, Users, Phone, User, ArrowLeft } from 'lucide-react';
-
-const API_BASE_URL = 'http://localhost:8080';
+import { EXTERNAL_URLS } from '@/config/api';
 
 // Simple auth check
 const isAuthenticated = () => {
@@ -51,12 +50,8 @@ const PricingPage: React.FC = () => {
   const [loading] = useState(false);
   const [testMode] = useState(false);
 
-  // Razorpay payment links for different plans
-  const razorpayLinks = {
-    basic: 'https://rzp.io/rzp/upgradebasic',
-    pro: 'https://rzp.io/rzp/upgradepro',
-    enterprise: 'https://rzp.io/rzp/upgradeenterprise'
-  };
+  // Payment links for different plans
+  const paymentLinks = EXTERNAL_URLS.PAYMENT;
 
   const handleSubscribe = (planId: string) => {
     const plan = plans[planId as keyof typeof plans];
@@ -67,7 +62,7 @@ const PricingPage: React.FC = () => {
       return;
     }
     
-    const paymentLink = razorpayLinks[planId as keyof typeof razorpayLinks];
+    const paymentLink = paymentLinks[planId.toUpperCase() as keyof typeof paymentLinks];
     if (paymentLink) {
       // Open Razorpay payment link in new tab
       window.open(paymentLink, '_blank');
