@@ -77,7 +77,7 @@ def create_app():
     
     # CORS configuration - Allow all origins for debugging
     CORS(app, 
-         origins="*",  # Temporarily allow all origins
+         origins=cors_origins,  # Use specific origins instead of "*"
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
          allow_headers=[
              "Content-Type", 
@@ -87,7 +87,7 @@ def create_app():
              "Accept",
              "Origin"
          ],
-         supports_credentials=False,  # Must be False when origins="*"
+         supports_credentials=False,  # Set to False for better compatibility
          max_age=86400  # Cache preflight for 24 hours
     )
     
