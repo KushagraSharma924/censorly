@@ -9,7 +9,7 @@ const getApiBaseUrl = (): string => {
   }
   
   // Production environment
-  return import.meta.env.VITE_API_BASE_URL || 'https://ai-profanity-filter-backend.onrender.com';
+  return import.meta.env.VITE_API_BASE_URL || 'https://ai-profanity-filter.onrender.com';
 };
 
 // Main API configuration
