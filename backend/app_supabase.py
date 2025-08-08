@@ -66,7 +66,8 @@ def create_app():
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8080",
-        "https://profanityfilter.ai"
+        "https://profanityfilter.ai",
+        "https://ai-profanity-filter.vercel.app"
     ]
     
     # Add Render domain if deployed
