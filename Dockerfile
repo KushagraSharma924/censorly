@@ -37,4 +37,4 @@ EXPOSE $PORT
 
 # Run with Gunicorn optimized for Render
 # Start the application
-CMD ["sh", "start.sh"]
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "--workers", "1", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "app_supabase:app"]
