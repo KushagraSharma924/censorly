@@ -75,8 +75,9 @@ def create_app():
     if render_url:
         cors_origins.append(render_url)
     
+    # CORS configuration - Allow all origins for debugging
     CORS(app, 
-         origins=cors_origins,
+         origins="*",  # Temporarily allow all origins
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
          allow_headers=[
              "Content-Type", 
@@ -86,7 +87,7 @@ def create_app():
              "Accept",
              "Origin"
          ],
-         supports_credentials=True,
+         supports_credentials=False,  # Must be False when origins="*"
          max_age=86400  # Cache preflight for 24 hours
     )
     
@@ -114,6 +115,22 @@ def create_app():
         app.register_blueprint(supabase_bp)
         logger.info("Supabase routes blueprint registered")
     
+    # Root endpoint
+    @app.route('/', methods=['GET'])
+    def root():
+        """Root endpoint."""
+        return jsonify({
+            'service': 'AI Profanity Filter SaaS Backend',
+            'status': 'running',
+            'version': '1.0.0',
+            'endpoints': {
+                'health': '/health',
+                'auth': '/api/auth/*',
+                'profile': '/api/profile/*',
+                'video': '/api/video/*'
+            }
+        })
+
     # Health check endpoint
     @app.route('/health', methods=['GET'])
     def health_check():
