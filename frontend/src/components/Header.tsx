@@ -18,11 +18,20 @@ export const Header: React.FC = () => {
 
   useEffect(() => {
     checkAuthStatus();
+    
+    // Also listen for storage changes (e.g., login/logout in another tab)
+    const handleStorageChange = () => {
+      checkAuthStatus();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem('access_token');
+      
       if (!token) {
         setIsAuthenticated(false);
         setUser(null);
@@ -30,38 +39,63 @@ export const Header: React.FC = () => {
         return;
       }
 
-      // Try to get user from localStorage first
-      const storedUser = authService.getCurrentUser();
-      if (storedUser && storedUser.email) {
-        const formattedUser = formatUserData(storedUser);
-        if (formattedUser) {
-          setUser(formattedUser);
-          setIsAuthenticated(true);
+      // We have a token, so user is authenticated
+      setIsAuthenticated(true);
+
+      // Try to get user from localStorage
+      const storedUserData = localStorage.getItem('user');
+      if (storedUserData) {
+        try {
+          const storedUser = JSON.parse(storedUserData);
+          if (storedUser && storedUser.email) {
+            const formattedUser = formatUserData(storedUser);
+            if (formattedUser) {
+              setUser(formattedUser);
+            } else {
+              // Create minimal user object
+              setUser({
+                id: storedUser.id || '',
+                email: storedUser.email || '',
+                name: storedUser.name || storedUser.full_name || '',
+                full_name: storedUser.full_name || '',
+                profile_image: '',
+                profile_image_url: '',
+                avatar_url: '',
+                subscription_status: 'active',
+                subscription_tier: 'free',
+                created_at: '',
+                updated_at: '',
+                usage_count: 0,
+                monthly_limit: 100,
+              });
+            }
+          }
+        } catch (parseError) {
+          console.error('Error parsing stored user data:', parseError);
         }
       }
 
-      // Then fetch fresh data from API
+      // Try to fetch fresh user data from API
       try {
         const freshProfile = await authService.getProfile();
         if (freshProfile && freshProfile.email) {
           const formattedProfile = formatUserData(freshProfile);
           if (formattedProfile) {
             setUser(formattedProfile);
-            setIsAuthenticated(true);
           }
         }
-      } catch (error) {
-        console.log('Failed to fetch fresh profile, using cached data:', error);
-        // If we have cached user data, keep using it
-        if (!storedUser || !storedUser.email) {
-          setIsAuthenticated(false);
-          setUser(null);
-        }
+      } catch (apiError) {
+        console.log('API call failed, using stored data:', apiError);
+        // Continue with stored data if API fails
       }
+
     } catch (error) {
       console.error('Auth check failed:', error);
-      setIsAuthenticated(false);
-      setUser(null);
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setIsAuthenticated(false);
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -149,7 +183,9 @@ export const Header: React.FC = () => {
             </nav>
 
             {/* Auth Section */}
-            {isAuthenticated ? (
+            {loading ? (
+              <div className="animate-pulse h-8 bg-gray-200 rounded w-24"></div>
+            ) : isAuthenticated ? (
               <div className="flex items-center space-x-3">
                 <Button 
                   variant="outline" 
