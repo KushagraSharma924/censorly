@@ -19,7 +19,9 @@ import {
   Zap,
   Copy,
   Trash2,
-  Globe
+  Globe,
+  User,
+  Github
 } from 'lucide-react';
 // import { apiService, APICapabilities } from '@/lib/api-service';
 import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
@@ -469,24 +471,80 @@ const Dashboard: React.FC = () => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-white py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent flex items-center justify-center">
-              <img 
-                src="/logo.svg" 
-                alt="Censorly Logo" 
-                className="w-full h-full object-cover"
-              />
+    <div className="min-h-screen bg-white">
+      {/* Enhanced Header */}
+      <header className="bg-white border-b border-gray-200 backdrop-blur-sm bg-white/95 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-sm border border-gray-200">
+                <img 
+                  src="/logo.svg" 
+                  alt="Censorly Logo" 
+                  className="w-10 h-10 object-cover"
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-black tracking-tight">
+                  Dashboard
+                </h1>
+                <div className="flex items-center space-x-3 text-xs text-gray-600">
+                  <Badge variant="outline" className="text-xs px-2 py-0.5 border-gray-300 bg-gray-50">
+                    <User className="h-3 w-3 mr-1" />
+                    {profile?.name || 'User'}
+                  </Badge>
+                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                  <span className="font-medium">
+                    {profile?.subscription_tier ? 
+                      profile.subscription_tier.charAt(0).toUpperCase() + profile.subscription_tier.slice(1) 
+                      : 'Free'
+                    } Plan
+                  </span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-black">Dashboard</h1>
-              <p className="text-gray-700">Welcome back, {profile?.name || 'User'}</p>
+            <div className="flex items-center space-x-6">
+              <nav className="hidden md:flex items-center space-x-6">
+                <Button variant="ghost" className="text-gray-700 hover:text-black hover:bg-gray-50 font-medium" onClick={() => window.location.href = '/'}>
+                  Home
+                </Button>
+                <Button variant="ghost" className="text-gray-700 hover:text-black hover:bg-gray-50 font-medium" onClick={() => window.location.href = '/upload'}>
+                  Upload
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="text-gray-700 hover:text-black hover:bg-gray-50 flex items-center space-x-2 font-medium"
+                  onClick={() => window.open('https://github.com/KushagraSharma924/ai-profanity-filter', '_blank')}
+                >
+                  <Github className="h-4 w-4" />
+                  <span>GitHub</span>
+                </Button>
+              </nav>
+              <div className="flex items-center space-x-3">
+                <Button variant="outline" size="sm" className="border-gray-300 text-black hover:bg-gray-50 font-medium shadow-sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-gray-700 hover:text-black hover:bg-gray-50 font-medium"
+                  onClick={() => {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    localStorage.removeItem('user');
+                    window.location.href = '/';
+                  }}
+                >
+                  Logout
+                </Button>
+              </div>
             </div>
           </div>
         </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
 
         {/* Overview Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
