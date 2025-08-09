@@ -52,7 +52,7 @@ const HomePage: React.FC = () => {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [processingStats, setProcessingStats] = useState({ videos: 0, accuracy: 0, timesSaved: 0 });
   
-  const words = ['Content Creators', 'Businesses', 'Educators', 'Podcasters', 'Streamers'];
+  const words = ['Creators', 'Businesses', 'Educators', 'Podcasters', 'Streamers'];
   
   // Typing animation effect
   useEffect(() => {
