@@ -98,35 +98,39 @@ const PricingPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white border-b border-gray-200 backdrop-blur-sm bg-white/95 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-3">
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => window.location.href = '/'}
-                className="mr-4"
+                className="mr-4 text-gray-700 hover:text-black hover:bg-gray-50"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Home
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
+                <Crown className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-black">
                 AI Profanity Filter - Pricing
               </h1>
             </div>
             <div className="flex items-center space-x-4">
               {loggedIn ? (
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => window.location.href = '/dashboard'}>
+                  <Button variant="outline" size="sm" className="border-gray-300 text-black hover:bg-gray-50" onClick={() => window.location.href = '/dashboard'}>
                     <User className="h-4 w-4 mr-2" />
                     Dashboard
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="sm"
+                    className="text-gray-700 hover:text-black hover:bg-gray-50"
                     onClick={() => {
                       localStorage.removeItem('access_token');
                       localStorage.removeItem('refresh_token');

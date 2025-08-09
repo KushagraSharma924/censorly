@@ -469,24 +469,35 @@ const Dashboard: React.FC = () => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-white py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {profile?.name || 'User'}</p>
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent flex items-center justify-center">
+              <img 
+                src="/logo.svg" 
+                alt="Censorly Logo" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-black">Dashboard</h1>
+              <p className="text-gray-700">Welcome back, {profile?.name || 'User'}</p>
+            </div>
+          </div>
         </div>
 
         {/* Overview Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="border border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Subscription</p>
+                  <p className="text-sm font-medium text-gray-700">Subscription</p>
                   <div className="flex items-center mt-1">
                     {getSubscriptionIcon(profile?.subscription_tier)}
-                    <p className="text-2xl font-bold text-gray-900 ml-2">
+                    <p className="text-2xl font-bold text-black ml-2">
                       {profile?.subscription_tier ? 
                         profile.subscription_tier.charAt(0).toUpperCase() + profile.subscription_tier.slice(1) 
                         : 'Loading...'
@@ -494,22 +505,22 @@ const Dashboard: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <CreditCard className="h-8 w-8 text-gray-400" />
+                <CreditCard className="h-8 w-8 text-black" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Uploads</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm font-medium text-gray-700">Total Uploads</p>
+                  <p className="text-2xl font-bold text-black">
                     {usageStats?.usage?.upload?.current || 0} / {usageStats?.usage?.upload?.limit || 0}
                   </p>
                   <Progress value={usageStats?.usage?.upload?.percentage || 0} className="mt-2" />
                 </div>
-                <FileVideo className="h-8 w-8 text-gray-400" />
+                <FileVideo className="h-8 w-8 text-black" />
               </div>
             </CardContent>
           </Card>

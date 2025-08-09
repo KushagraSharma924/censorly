@@ -136,20 +136,29 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            AI Profanity Filter
-          </h1>
-          <p className="text-gray-600">
+          <div className="flex items-center justify-center space-x-3 mb-4">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent flex items-center justify-center">
+              <img 
+                src="/logo.svg" 
+                alt="Censorly Logo" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h1 className="text-3xl font-bold text-black">
+              Censorly
+            </h1>
+          </div>
+          <p className="text-gray-700">
             {isLogin ? 'Sign in to your account' : 'Create your account'}
           </p>
         </div>
 
-        <Card className="shadow-xl">
+        <Card className="shadow-xl border border-gray-200 bg-white">
           <CardHeader>
-            <CardTitle className="text-center">
+            <CardTitle className="text-center text-black">
               {isLogin ? 'Welcome Back' : 'Get Started'}
             </CardTitle>
           </CardHeader>
@@ -205,7 +214,7 @@ const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800" disabled={loading}>
                   {loading ? (
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -296,7 +305,7 @@ const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800" disabled={loading}>
                   {loading ? (
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -313,11 +322,11 @@ const LoginPage: React.FC = () => {
             )}
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-700">
                 {isLogin ? "Don't have an account?" : 'Already have an account?'}
                 <button
                   type="button"
-                  className="ml-1 text-blue-600 hover:text-blue-500 font-medium"
+                  className="ml-1 text-black hover:text-gray-700 font-medium"
                   onClick={() => {
                     setIsLogin(!isLogin);
                     setError('');
@@ -332,7 +341,7 @@ const LoginPage: React.FC = () => {
               <div className="mt-4 text-center">
                 <button
                   type="button"
-                  className="text-sm text-blue-600 hover:text-blue-500"
+                  className="text-sm text-black hover:text-gray-700"
                   onClick={() => alert('Password reset functionality will be implemented soon.')}
                 >
                   Forgot your password?
@@ -342,7 +351,7 @@ const LoginPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center text-sm text-gray-600">
+        <div className="mt-8 text-center text-sm text-gray-700">
           <p>By continuing, you agree to our Terms of Service and Privacy Policy</p>
         </div>
       </div>

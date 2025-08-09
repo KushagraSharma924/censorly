@@ -35,17 +35,21 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <header className="w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
       <div className="container max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-3">
-          <div className="flex items-center justify-center w-10 h-10 bg-gradient-primary rounded-lg">
-            <Video className="w-6 h-6 text-primary-foreground" />
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-transparent flex items-center justify-center">
+            <img 
+              src="/logo.svg" 
+              alt="Censorly Logo" 
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
-            <h1 className="text-xl font-bold">CleanMyVideo</h1>
-            <p className="text-xs text-muted-foreground hidden sm:block">
-              AI-powered video cleaner
+            <h1 className="text-xl font-bold text-black">Censorly</h1>
+            <p className="text-xs text-gray-700 hidden sm:block">
+              Professional Content Moderation
             </p>
           </div>
         </Link>

@@ -263,29 +263,40 @@ const UploadPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-white py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Upload Videos</h1>
-          <p className="text-gray-600">
-            Upload your videos to detect and filter profanity with AI
-          </p>
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent flex items-center justify-center">
+              <img 
+                src="/logo.svg" 
+                alt="Censorly Logo" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-black">Upload Videos</h1>
+              <p className="text-gray-700">
+                Upload your videos to detect and filter profanity with AI
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Upload Section */}
           <div className="lg:col-span-2 space-y-6">
             {/* Upload Area */}
-            <Card>
+            <Card className="border border-gray-200 bg-white">
               <CardHeader>
-                <CardTitle>Select Videos</CardTitle>
+                <CardTitle className="text-black">Select Videos</CardTitle>
               </CardHeader>
               <CardContent>
                 <div
                   className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                     dragActive 
-                      ? 'border-blue-500 bg-blue-50' 
+                      ? 'border-black bg-gray-50' 
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                   onDragEnter={handleDrag}

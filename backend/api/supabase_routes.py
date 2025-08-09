@@ -294,6 +294,101 @@ def login():
         logger.error(f"Login error: {str(e)}")
         return jsonify({'error': 'Login failed'}), 500
 
+@supabase_bp.route('/auth/logout', methods=['POST'])
+@supabase_auth_required
+def logout():
+    """User logout."""
+    try:
+        # In a stateless JWT setup, logout is handled client-side
+        # by removing the token. We can optionally blacklist tokens here.
+        
+        user = request.current_user
+        logger.info(f"User logged out: {user['email']}")
+        
+        return jsonify({
+            'message': 'Logout successful'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Logout error: {str(e)}")
+        return jsonify({'error': 'Logout failed'}), 500
+
+@supabase_bp.route('/auth/verify-token', methods=['POST'])
+def verify_token():
+    """Verify JWT token validity."""
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'error': 'Authorization header required'}), 401
+        
+        try:
+            token = auth_header.split(' ')[1]  # Bearer <token>
+        except IndexError:
+            return jsonify({'error': 'Invalid authorization header format'}), 401
+        
+        # Verify token
+        try:
+            payload = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+            user_id = payload.get('sub')
+            
+            if not user_id:
+                return jsonify({'error': 'Invalid token payload'}), 401
+            
+            # Get user data
+            user_data = supabase_service.get_user_by_id(user_id)
+            if not user_data:
+                return jsonify({'error': 'User not found'}), 401
+            
+            return jsonify({
+                'valid': True,
+                'user': {
+                    'id': user_data['id'],
+                    'email': user_data['email'],
+                    'name': user_data['full_name'],
+                    'subscription_tier': user_data['subscription_tier']
+                }
+            }), 200
+            
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token expired', 'valid': False}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token', 'valid': False}), 401
+            
+    except Exception as e:
+        logger.error(f"Verify token error: {str(e)}")
+        return jsonify({'error': 'Token verification failed'}), 500
+
+@supabase_bp.route('/auth/refresh', methods=['POST'])
+@supabase_auth_required
+def refresh_token():
+    """Refresh JWT token."""
+    try:
+        user = request.current_user
+        
+        # Create new access token using JWT
+        payload = {
+            'sub': user['id'],
+            'email': user['email'],
+            'iat': datetime.utcnow(),
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }
+        
+        new_access_token = jwt.encode(payload, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
+        
+        return jsonify({
+            'access_token': new_access_token,
+            'user': {
+                'id': user['id'],
+                'email': user['email'],
+                'name': user['full_name'],
+                'subscription_tier': user['subscription_tier']
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Refresh token error: {str(e)}")
+        return jsonify({'error': 'Token refresh failed'}), 500
+
 @supabase_bp.route('/test/profile', methods=['GET'])
 def test_profile():
     """Test endpoint to return real user data without authentication (for debugging)."""
