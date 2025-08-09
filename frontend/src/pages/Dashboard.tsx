@@ -404,20 +404,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (!profile) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">Please log in to access your dashboard.</p>
-          <Button onClick={() => window.location.href = '/login'}>
-            Go to Login
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const usagePercentage = profile?.monthly_limit > 0 
     ? (profile.usage_count / profile.monthly_limit) * 100 
     : 0;
