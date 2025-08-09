@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Header } from '@/components/Header';
 import { 
   Upload, 
   FileVideo, 
@@ -263,26 +264,17 @@ const UploadPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent flex items-center justify-center">
-              <img 
-                src="/logo.svg" 
-                alt="Censorly Logo" 
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-black">Upload Videos</h1>
-              <p className="text-gray-700">
-                Upload your videos to detect and filter profanity with AI
-              </p>
-            </div>
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Page Title */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-black">Upload Videos</h1>
+            <p className="text-gray-700">
+              Upload your videos to detect and filter profanity with AI
+            </p>
           </div>
-        </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Upload Section */}
@@ -517,6 +509,7 @@ const UploadPage: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
         </div>
       </div>
     </div>

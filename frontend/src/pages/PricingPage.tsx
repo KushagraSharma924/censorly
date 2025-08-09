@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Check, Zap, Shield, Users, Phone, User, ArrowLeft } from 'lucide-react';
 import { EXTERNAL_URLS } from '@/config/api';
+import { Header } from '@/components/Header';
 
 // Simple auth check
 const isAuthenticated = () => {
@@ -99,65 +100,14 @@ const PricingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 backdrop-blur-sm bg-white/95 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => window.location.href = '/'}
-                className="mr-4 text-gray-700 hover:text-black hover:bg-gray-50"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Home
-              </Button>
-              <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
-                <Crown className="h-6 w-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold text-black">
-                AI Profanity Filter - Pricing
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              {loggedIn ? (
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" className="border-gray-300 text-black hover:bg-gray-50" onClick={() => window.location.href = '/dashboard'}>
-                    <User className="h-4 w-4 mr-2" />
-                    Dashboard
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="text-gray-700 hover:text-black hover:bg-gray-50"
-                    onClick={() => {
-                      localStorage.removeItem('access_token');
-                      localStorage.removeItem('refresh_token');
-                      localStorage.removeItem('user');
-                      window.location.reload();
-                    }}
-                  >
-                    Logout
-                  </Button>
-                </div>
-              ) : (
-                <Button onClick={() => window.location.href = '/login'}>
-                  Get Started
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
+      <Header />
       <div className="py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Choose Your Plan
-          </h1>
+        <div className="max-w-7xl mx-auto">
+          {/* Page Title */}
+          <div className="text-center mb-16">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Choose Your Plan
+            </h1>
           <p className="text-xl text-gray-600 mb-6">
             Scale your content moderation with our AI-powered profanity filter
           </p>
