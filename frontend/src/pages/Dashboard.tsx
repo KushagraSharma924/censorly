@@ -134,16 +134,9 @@ const Dashboard: React.FC = () => {
         })
       ]);
 
-      console.log('📊 API Response Status:', {
-        profile: profileRes.status,
-        jobs: jobsRes.status,
-        keys: keysRes.status,
-        usage: usageRes.status
-      });
-
       // Check for authentication errors
       if (profileRes.status === 401 || jobsRes.status === 401 || keysRes.status === 401 || usageRes.status === 401) {
-        console.log('🚫 Authentication failed, clearing tokens');
+        console.log('Authentication failed, redirecting to login');
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');

@@ -47,16 +47,28 @@ const ProfilePage: React.FC = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordChangeMode, setPasswordChangeMode] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
-    // Also try to get usage statistics
-    fetchUsageStats();
-  }, []);
+    if (isInitialLoad) {
+      loadProfileData();
+      setIsInitialLoad(false);
+    }
+  }, [isInitialLoad]);
+
+  const loadProfileData = async () => {
+    setLoading(true);
+    try {
+      await fetchProfile();
+      fetchUsageStats(); // Call after profile is loaded
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchUsageStats = async () => {
     try {
@@ -64,7 +76,7 @@ const ProfilePage: React.FC = () => {
       if (!token) return;
 
       // TODO: Re-enable when backend endpoint is available
-      console.log('Usage stats endpoint temporarily disabled due to CORS');
+      // Temporarily using mock data due to backend deployment pending
       
       // Set some default usage data for now
       setProfile(prev => prev ? {
@@ -74,15 +86,12 @@ const ProfilePage: React.FC = () => {
       } : null);
       
     } catch (error) {
-      console.log('Usage stats not available:', error);
-      // Don't show error for usage stats as it's not critical
+      // Silently handle error - usage stats are not critical
     }
   };
 
   const fetchProfile = async () => {
     try {
-      console.log('Fetching profile data...');
-      
       // First try to get cached user data
       const cachedUser = authService.getCurrentUser();
       if (cachedUser && cachedUser.email) {
@@ -100,7 +109,6 @@ const ProfilePage: React.FC = () => {
 
       // Then fetch fresh data from API
       const freshProfile = await authService.getProfile();
-      console.log('Profile data received:', freshProfile);
       
       if (freshProfile && freshProfile.email) {
         const formattedProfile = formatUserData(freshProfile);
@@ -154,9 +162,21 @@ const ProfilePage: React.FC = () => {
       });
 
       if (response.ok) {
+        const updatedData = await response.json();
+        
+        // Update profile state directly instead of refetching
+        if (updatedData.user || updatedData.profile || updatedData) {
+          const newProfileData = updatedData.user || updatedData.profile || updatedData;
+          const formattedProfile = formatUserData(newProfileData);
+          if (formattedProfile) {
+            setProfile(formattedProfile);
+            // Update localStorage with fresh data
+            localStorage.setItem('user', JSON.stringify(newProfileData));
+          }
+        }
+        
         setMessage('Profile updated successfully');
         setIsEditing(false);
-        fetchProfile(); // Refresh profile data
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to update profile');
