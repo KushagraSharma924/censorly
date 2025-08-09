@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Menu, User, LogOut, Github } from 'lucide-react';
+import { Video, Menu, User, LogOut, Github, Settings } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -149,6 +149,10 @@ export const Header: React.FC = () => {
                     <DropdownMenuItem onClick={() => navigate('/dashboard')}>
                       <User className="mr-2 h-4 w-4" />
                       Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/profile')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Profile
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>

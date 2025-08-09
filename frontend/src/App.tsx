@@ -8,6 +8,7 @@ import LoginPage from '@/pages/LoginPage';
 import Dashboard from '@/pages/Dashboard';
 import PricingPage from '@/pages/PricingPage';
 import UploadPage from '@/pages/UploadPage';
+import ProfilePage from '@/pages/ProfilePage';
 
 // Simple auth check
 const isAuthenticated = () => {
@@ -55,6 +56,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <UploadPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />
