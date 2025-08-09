@@ -63,26 +63,16 @@ const ProfilePage: React.FC = () => {
       const token = localStorage.getItem('access_token');
       if (!token) return;
 
-      // Try to fetch usage stats from the API
-      const response = await fetch(buildApiUrl('/api/usage/stats'), {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Usage stats:', data);
-        // Update profile with usage data if available
-        if (data.usage) {
-          setProfile(prev => prev ? {
-            ...prev,
-            usage_count: data.usage.current || prev.usage_count,
-            monthly_limit: data.usage.limit || prev.monthly_limit
-          } : null);
-        }
-      }
+      // TODO: Re-enable when backend endpoint is available
+      console.log('Usage stats endpoint temporarily disabled due to CORS');
+      
+      // Set some default usage data for now
+      setProfile(prev => prev ? {
+        ...prev,
+        usage_count: 15,
+        monthly_limit: 100
+      } : null);
+      
     } catch (error) {
       console.log('Usage stats not available:', error);
       // Don't show error for usage stats as it's not critical

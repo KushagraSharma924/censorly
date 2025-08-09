@@ -58,7 +58,7 @@ def create_app():
     # Initialize extensions (no SQLAlchemy)
     jwt = JWTManager(app)
     
-    # CORS configuration - Railway friendly
+    # CORS configuration - More permissive for development and production
     cors_origins = [
         "http://localhost:3000", 
         "http://localhost:5173", 
@@ -68,29 +68,46 @@ def create_app():
         "http://127.0.0.1:8080",
         "https://profanityfilter.ai",
         "https://ai-profanity-filter.vercel.app",
-        "https://censorly.vercel.app"
+        "https://censorly.vercel.app",
+        "https://*.vercel.app"  # Allow all Vercel apps
     ]
     
     # Add Render domain if deployed
     render_url = os.getenv('RENDER_EXTERNAL_URL')
     if render_url:
         cors_origins.append(render_url)
+        cors_origins.append(render_url.replace('http:', 'https:'))  # Both HTTP and HTTPS
     
-    # CORS configuration - Allow all origins for debugging
+    # CORS configuration - More permissive setup
     CORS(app, 
-         origins=cors_origins,  # Use specific origins instead of "*"
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+         origins=cors_origins,
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
          allow_headers=[
              "Content-Type", 
              "Authorization", 
              "X-API-Key",
              "X-Requested-With",
              "Accept",
-             "Origin"
+             "Origin",
+             "Access-Control-Request-Method",
+             "Access-Control-Request-Headers"
          ],
-         supports_credentials=False,  # Set to False for better compatibility
-         max_age=86400  # Cache preflight for 24 hours
+         supports_credentials=False,
+         send_wildcard=False,
+         max_age=86400
     )
+    
+    # Handle preflight requests globally
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            # Create a response with appropriate CORS headers
+            response = make_response()
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-API-Key,X-Requested-With,Accept,Origin")
+            response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS,PATCH")
+            response.headers.add('Access-Control-Max-Age', '86400')
+            return response
     
     # JWT configuration
     @jwt.expired_token_loader
