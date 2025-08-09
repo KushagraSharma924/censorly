@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Video, Menu, User, LogOut, Github } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,31 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useAuth } from '@/contexts/auth-context';
 import { EXTERNAL_URLS } from '@/config/api';
 
 export const Header: React.FC = () => {
-  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check authentication status from localStorage
+    const token = localStorage.getItem('access_token');
+    const userData = localStorage.getItem('user');
+    
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        setIsAuthenticated(false);
+      }
+    } else {
+      setIsAuthenticated(false);
+    }
+  }, []);
 
   const navItems = [
     { label: 'Pricing', href: '/pricing' },
@@ -19,7 +38,17 @@ export const Header: React.FC = () => {
   ];
 
   const handleLogout = () => {
-    logout();
+    // Clear all auth data from localStorage
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('user_data');
+    
+    // Update local state
+    setUser(null);
+    setIsAuthenticated(false);
+    
+    // Navigate to home
     navigate('/');
   };
 
@@ -100,7 +129,7 @@ export const Header: React.FC = () => {
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={EXTERNAL_URLS.AVATAR.VERCEL(user?.email || '')} />
                         <AvatarFallback>
-                          {getUserInitials(user?.full_name, user?.email)}
+                          {getUserInitials(user?.name || user?.full_name, user?.email)}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -108,8 +137,8 @@ export const Header: React.FC = () => {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <div className="flex items-center justify-start gap-2 p-2">
                       <div className="flex flex-col space-y-1 leading-none">
-                        {user?.full_name && (
-                          <p className="font-medium">{user.full_name}</p>
+                        {(user?.name || user?.full_name) && (
+                          <p className="font-medium">{user?.name || user?.full_name}</p>
                         )}
                         <p className="w-[200px] truncate text-sm text-muted-foreground">
                           {user?.email}
