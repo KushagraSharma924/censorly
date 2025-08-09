@@ -100,7 +100,6 @@ const Dashboard: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [apiCapabilities, setApiCapabilities] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showNewApiKey, setShowNewApiKey] = useState(false);
   const [newApiKey, setNewApiKey] = useState<string>('');
@@ -187,10 +186,8 @@ const Dashboard: React.FC = () => {
         console.error('Failed to fetch API capabilities:', error);
       }
 
-      setLoading(false);
     } catch (error) {
       console.error('❌ Failed to fetch dashboard data:', error);
-      setLoading(false);
     }
   };
 
@@ -406,50 +403,6 @@ const Dashboard: React.FC = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          {/* Professional SaaS Loading Animation */}
-          <div className="relative">
-            {/* Outer rotating ring */}
-            <div className="w-20 h-20 border-4 border-blue-200 rounded-full animate-spin border-t-blue-500 mx-auto"></div>
-            
-            {/* Inner pulsing dot */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
-            </div>
-            
-            {/* Brand icon overlay */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <Shield className="h-6 w-6 text-blue-600 animate-pulse" />
-            </div>
-          </div>
-          
-          {/* Loading text with typing animation */}
-          <div className="mt-6 space-y-2">
-            <h3 className="text-xl font-semibold text-gray-800">Loading Dashboard</h3>
-            <div className="flex items-center justify-center space-x-1">
-              <span className="text-gray-600">Preparing your analytics</span>
-              <div className="flex space-x-1">
-                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
-                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Progress bar simulation */}
-          <div className="mt-4 w-64 mx-auto">
-            <div className="bg-gray-200 rounded-full h-1.5">
-              <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1.5 rounded-full animate-pulse" style={{width: '70%'}}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!profile) {
     return (
