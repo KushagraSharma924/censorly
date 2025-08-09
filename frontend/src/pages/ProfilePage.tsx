@@ -95,29 +95,35 @@ const ProfilePage: React.FC = () => {
       
       // First try to get cached user data
       const cachedUser = authService.getCurrentUser();
-      if (cachedUser) {
+      if (cachedUser && cachedUser.email) {
         const formattedUser = formatUserData(cachedUser);
-        setProfile(formattedUser);
-        
-        // Update form data with current profile values
-        setFormData({
-          name: formattedUser?.name || formattedUser?.full_name || '',
-          email: formattedUser?.email || ''
-        });
+        if (formattedUser) {
+          setProfile(formattedUser);
+          
+          // Update form data with current profile values
+          setFormData({
+            name: formattedUser.name || formattedUser.full_name || '',
+            email: formattedUser.email || ''
+          });
+        }
       }
 
       // Then fetch fresh data from API
       const freshProfile = await authService.getProfile();
       console.log('Profile data received:', freshProfile);
       
-      const formattedProfile = formatUserData(freshProfile);
-      setProfile(formattedProfile);
-      
-      // Update form data with fresh profile values
-      setFormData({
-        name: formattedProfile?.name || formattedProfile?.full_name || '',
-        email: formattedProfile?.email || ''
-      });
+      if (freshProfile && freshProfile.email) {
+        const formattedProfile = formatUserData(freshProfile);
+        if (formattedProfile) {
+          setProfile(formattedProfile);
+          
+          // Update form data with fresh profile values
+          setFormData({
+            name: formattedProfile.name || formattedProfile.full_name || '',
+            email: formattedProfile.email || ''
+          });
+        }
+      }
       
     } catch (error) {
       console.error('Profile fetch error:', error);

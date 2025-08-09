@@ -32,22 +32,28 @@ export const Header: React.FC = () => {
 
       // Try to get user from localStorage first
       const storedUser = authService.getCurrentUser();
-      if (storedUser) {
+      if (storedUser && storedUser.email) {
         const formattedUser = formatUserData(storedUser);
-        setUser(formattedUser);
-        setIsAuthenticated(true);
+        if (formattedUser) {
+          setUser(formattedUser);
+          setIsAuthenticated(true);
+        }
       }
 
       // Then fetch fresh data from API
       try {
         const freshProfile = await authService.getProfile();
-        const formattedProfile = formatUserData(freshProfile);
-        setUser(formattedProfile);
-        setIsAuthenticated(true);
+        if (freshProfile && freshProfile.email) {
+          const formattedProfile = formatUserData(freshProfile);
+          if (formattedProfile) {
+            setUser(formattedProfile);
+            setIsAuthenticated(true);
+          }
+        }
       } catch (error) {
         console.log('Failed to fetch fresh profile, using cached data:', error);
         // If we have cached user data, keep using it
-        if (!storedUser) {
+        if (!storedUser || !storedUser.email) {
           setIsAuthenticated(false);
           setUser(null);
         }
