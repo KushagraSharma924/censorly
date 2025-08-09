@@ -46,23 +46,21 @@ const App = () => (
             path="/dashboard" 
             element={
               <ProtectedRoute>
-                <Navbar />
                 <Dashboard />
               </ProtectedRoute>
-            } 
-        />
-        <Route 
-          path="/upload" 
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <UploadPage />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Catch all route */}
-        <Route path="*" element={<Navigate to="/" />} />
+            }
+          />
+          <Route 
+            path="/upload" 
+            element={
+              <ProtectedRoute>
+                <UploadPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Catch all route */}
+          <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       <Toaster />
     </div>
