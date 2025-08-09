@@ -4,10 +4,17 @@ import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '@/config/api';
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name?: string;
+  full_name?: string;
+  profile_image?: string;
+  profile_image_url?: string;
+  avatar_url?: string;
   subscription_tier?: string;
+  subscription_status?: string;
   created_at?: string;
   updated_at?: string;
+  usage_count?: number;
+  monthly_limit?: number;
 }
 
 export interface LoginCredentials {
@@ -57,6 +64,7 @@ class AuthService {
   removeTokens(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    localStorage.removeItem('user');
   }
 
   // API request helper
@@ -120,6 +128,11 @@ class AuthService {
       this.setRefreshToken(response.refresh_token);
     }
 
+    // Store user data including profile information
+    if (response.user) {
+      localStorage.setItem('user', JSON.stringify(response.user));
+    }
+
     return response;
   }
 
@@ -159,7 +172,14 @@ class AuthService {
   }
 
   async getProfile(): Promise<User> {
-    return await this.makeRequest<User>(API_ENDPOINTS.USER.PROFILE);
+    const profile = await this.makeRequest<User>(API_ENDPOINTS.USER.PROFILE);
+    
+    // Update stored user data with fresh profile information
+    if (profile) {
+      localStorage.setItem('user', JSON.stringify(profile));
+    }
+    
+    return profile;
   }
 
   async verifyToken(): Promise<{ valid: boolean; user?: User }> {
@@ -204,8 +224,14 @@ class AuthService {
   }
 
   getCurrentUser(): User | null {
-    // This would typically decode the JWT token to get user info
-    // For now, return null and rely on getProfile() for user data
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        return JSON.parse(userData);
+      }
+    } catch (error) {
+      console.error('Error parsing stored user data:', error);
+    }
     return null;
   }
 }

@@ -7,60 +7,92 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { EXTERNAL_URLS } from '@/config/api';
+import { authService } from '@/lib/auth-service';
+import { getProfileImageUrl, getUserInitials, getUserDisplayName, formatUserData, type UserProfile } from '@/lib/user-utils';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check authentication status from localStorage
-    const token = localStorage.getItem('access_token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setIsAuthenticated(false);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      // Try to get user from localStorage first
+      const storedUser = authService.getCurrentUser();
+      if (storedUser) {
+        const formattedUser = formatUserData(storedUser);
+        setUser(formattedUser);
+        setIsAuthenticated(true);
+      }
+
+      // Then fetch fresh data from API
       try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
+        const freshProfile = await authService.getProfile();
+        const formattedProfile = formatUserData(freshProfile);
+        setUser(formattedProfile);
         setIsAuthenticated(true);
       } catch (error) {
-        console.error('Error parsing user data:', error);
-        setIsAuthenticated(false);
+        console.log('Failed to fetch fresh profile, using cached data:', error);
+        // If we have cached user data, keep using it
+        if (!storedUser) {
+          setIsAuthenticated(false);
+          setUser(null);
+        }
       }
-    } else {
+    } catch (error) {
+      console.error('Auth check failed:', error);
       setIsAuthenticated(false);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
   const navItems = [
     { label: 'Pricing', href: '/pricing' },
     { label: 'Documentation', href: '#docs' },
   ];
 
-  const handleLogout = () => {
-    // Clear all auth data from localStorage
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('user_data');
-    
-    // Update local state
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    // Navigate to home
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear local state
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      // Navigate to home
+      navigate('/');
+    }
   };
 
-  const getUserInitials = (name?: string, email?: string) => {
-    if (name) {
-      return name.split(' ').map(n => n[0]).join('').toUpperCase();
-    }
-    if (email) {
-      return email[0].toUpperCase();
-    }
-    return 'U';
-  };
+  if (loading) {
+    return (
+      <header className="bg-white border-b border-gray-200 backdrop-blur-sm bg-white/95 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="animate-pulse h-8 bg-gray-200 rounded w-32"></div>
+            <div className="animate-pulse h-8 bg-gray-200 rounded w-24"></div>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="bg-white border-b border-gray-200 backdrop-blur-sm bg-white/95 sticky top-0 z-50">
@@ -127,9 +159,12 @@ export const Header: React.FC = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={EXTERNAL_URLS.AVATAR.VERCEL(user?.email || '')} />
-                        <AvatarFallback>
-                          {getUserInitials(user?.name || user?.full_name, user?.email)}
+                        <AvatarImage 
+                          src={getProfileImageUrl(user)} 
+                          alt={getUserDisplayName(user)}
+                        />
+                        <AvatarFallback className="bg-black text-white text-xs font-semibold">
+                          {getUserInitials(user)}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -137,9 +172,7 @@ export const Header: React.FC = () => {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <div className="flex items-center justify-start gap-2 p-2">
                       <div className="flex flex-col space-y-1 leading-none">
-                        {(user?.name || user?.full_name) && (
-                          <p className="font-medium">{user?.name || user?.full_name}</p>
-                        )}
+                        <p className="font-medium">{getUserDisplayName(user)}</p>
                         <p className="w-[200px] truncate text-sm text-muted-foreground">
                           {user?.email}
                         </p>

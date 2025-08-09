@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Header } from '@/components/Header';
+import { authService } from '@/lib/auth-service';
+import { getProfileImageUrl, getUserInitials, getUserDisplayName, formatUserData, type UserProfile } from '@/lib/user-utils';
+import { buildApiUrl, API_ENDPOINTS } from '@/config/api';
 import { 
   User, 
   Mail, 
@@ -21,24 +24,12 @@ import {
   Crown,
   Settings,
   Eye,
-  EyeOff
+  EyeOff,
+  Camera,
+  RefreshCw,
+  AlertCircle,
+  Check
 } from 'lucide-react';
-import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
-
-interface UserProfile {
-  id: string;
-  email: string;
-  name: string;
-  full_name?: string;
-  subscription_tier?: string;
-  subscription_status?: string;
-  created_at?: string;
-  updated_at?: string;
-  monthly_limit?: number;
-  usage_count?: number;
-  profile_image?: string;
-  avatar_url?: string;
-}
 
 interface ProfileFormData {
   name: string;
@@ -100,58 +91,42 @@ const ProfilePage: React.FC = () => {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        console.error('No auth token found');
-        window.location.href = '/login';
-        return;
-      }
-
       console.log('Fetching profile data...');
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.USER.PROFILE), {
-        method: 'GET',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('Profile response status:', response.status);
-
-      if (response.status === 401) {
-        console.error('Unauthorized - redirecting to login');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return;
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Profile data received:', data);
-        
-        // Handle different response structures from backend
-        const profileData = data.user || data.profile || data;
-        setProfile(profileData);
+      
+      // First try to get cached user data
+      const cachedUser = authService.getCurrentUser();
+      if (cachedUser) {
+        const formattedUser = formatUserData(cachedUser);
+        setProfile(formattedUser);
         
         // Update form data with current profile values
         setFormData({
-          name: profileData.name || profileData.full_name || '',
-          email: profileData.email || ''
+          name: formattedUser?.name || formattedUser?.full_name || '',
+          email: formattedUser?.email || ''
         });
-        
-        // Update localStorage with fresh user data
-        localStorage.setItem('user', JSON.stringify(profileData));
-        
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Profile fetch failed:', response.status, errorData);
-        setError(errorData.error || `Failed to load profile data (${response.status})`);
       }
+
+      // Then fetch fresh data from API
+      const freshProfile = await authService.getProfile();
+      console.log('Profile data received:', freshProfile);
+      
+      const formattedProfile = formatUserData(freshProfile);
+      setProfile(formattedProfile);
+      
+      // Update form data with fresh profile values
+      setFormData({
+        name: formattedProfile?.name || formattedProfile?.full_name || '',
+        email: formattedProfile?.email || ''
+      });
+      
     } catch (error) {
       console.error('Profile fetch error:', error);
-      setError('Network error: Failed to load profile data');
+      if (error instanceof Error && error.message.includes('401')) {
+        // Redirect to login on authentication error
+        window.location.href = '/login';
+        return;
+      }
+      setError('Failed to load profile data');
     }
   };
 
@@ -249,39 +224,6 @@ const ProfilePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getProfileImageUrl = (profile: UserProfile) => {
-    // If user has a custom profile image
-    if (profile.profile_image) {
-      return profile.profile_image;
-    }
-    
-    // If user has an avatar URL
-    if (profile.avatar_url) {
-      return profile.avatar_url;
-    }
-    
-    // Generate avatar using external service (Gravatar or UI Avatars)
-    const email = profile.email;
-    if (email) {
-      // Using UI Avatars service for consistent, professional avatars
-      const name = (profile.name || profile.full_name || email.split('@')[0]).replace(/\s+/g, '+');
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=000000&color=ffffff&format=png&rounded=true&bold=true`;
-    }
-    
-    return null;
-  };
-
-  const getInitials = (profile: UserProfile) => {
-    const name = profile.name || profile.full_name;
-    if (name) {
-      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    }
-    if (profile.email) {
-      return profile.email[0].toUpperCase();
-    }
-    return 'U';
   };
 
   const getSubscriptionIcon = (tier?: string) => {
@@ -398,26 +340,35 @@ const ProfilePage: React.FC = () => {
                 <CardContent className="space-y-6">
                   {/* Profile Picture */}
                   <div className="flex items-center space-x-6">
-                    <div className="relative">
-                      {getProfileImageUrl(profile) ? (
+                    <div className="relative group">
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-lg">
                         <img
-                          src={getProfileImageUrl(profile)!}
+                          src={getProfileImageUrl(profile)}
                           alt="Profile"
-                          className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                          className="w-full h-full object-cover"
                           onError={(e) => {
-                            // Fallback to initials if image fails to load
+                            // Fallback to initials display
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
-                            target.nextElementSibling?.classList.remove('hidden');
+                            const fallbackDiv = target.nextElementSibling as HTMLElement;
+                            if (fallbackDiv) {
+                              fallbackDiv.style.display = 'flex';
+                            }
                           }}
                         />
-                      ) : null}
-                      <div className={`w-20 h-20 rounded-full bg-black flex items-center justify-center text-white text-2xl font-bold ${getProfileImageUrl(profile) ? 'hidden' : ''}`}>
-                        {getInitials(profile)}
+                        <div 
+                          className="w-full h-full rounded-full bg-black flex items-center justify-center text-white text-2xl font-bold"
+                          style={{ display: 'none' }}
+                        >
+                          {getUserInitials(profile)}
+                        </div>
                       </div>
+                      <button className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-700 transition-colors group-hover:scale-110 transform duration-200">
+                        <Camera className="w-3 h-3" />
+                      </button>
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold">{profile.name || profile.full_name || 'User'}</h3>
+                      <h3 className="text-lg font-semibold">{getUserDisplayName(profile)}</h3>
                       <p className="text-gray-600">{profile.email}</p>
                       <p className="text-sm text-gray-500">
                         Member since {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'}
