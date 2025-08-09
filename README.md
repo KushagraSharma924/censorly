@@ -142,7 +142,7 @@ REDIS_URL=redis://localhost:6379
 CELERY_BROKER_URL=redis://localhost:6379
 
 # API Configuration
-CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
+CORS_ORIGINS=http://localhost:3000,https://censorly.vercel.app
 RATE_LIMIT_REQUESTS=100
 RATE_LIMIT_WINDOW=3600
 ```
