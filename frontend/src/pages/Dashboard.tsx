@@ -4,7 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/Header';
+import { DashboardSkeleton } from '@/components/DashboardSkeleton';
+import { dashboardCache } from '@/lib/dashboard-cache';
+import { perfMonitor } from '@/lib/performance-monitor';
 import { 
   Key, 
   CreditCard, 
@@ -20,7 +24,8 @@ import {
   Zap,
   Copy,
   Trash2,
-  Globe
+  Globe,
+  Loader2
 } from 'lucide-react';
 // import { apiService, APICapabilities } from '@/lib/api-service';
 import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
@@ -105,13 +110,21 @@ const Dashboard: React.FC = () => {
   const [newApiKey, setNewApiKey] = useState<string>('');
   const [newApiKeyName, setNewApiKeyName] = useState<string>('');
   const [showApiKeyForm, setShowApiKeyForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
+    if (!isInitialLoad) {
+      setRefreshing(true);
+    }
+
     try {
+      perfMonitor.start('dashboard-load');
+      
       const token = localStorage.getItem('access_token');
       if (!token) {
         console.log('❌ No token found, redirecting to login');
@@ -119,6 +132,30 @@ const Dashboard: React.FC = () => {
         return;
       }
 
+      // Check cache first for faster loading
+      perfMonitor.start('cache-check');
+      const cachedProfile = dashboardCache.get<UserProfile>('profile');
+      const cachedJobs = dashboardCache.get<Job[]>('jobs');
+      const cachedApiKeys = dashboardCache.get<APIKey[]>('apiKeys');
+      const cachedUsageStats = dashboardCache.get<UsageStats>('usageStats');
+      perfMonitor.end('cache-check');
+
+      // Set cached data immediately for faster UI
+      if (cachedProfile) setProfile(cachedProfile);
+      if (cachedJobs) setJobs(cachedJobs);
+      if (cachedApiKeys) setApiKeys(cachedApiKeys);
+      if (cachedUsageStats) setUsageStats(cachedUsageStats);
+
+      // If we have all cached data, show UI immediately and fetch in background
+      if (cachedProfile && cachedJobs && cachedApiKeys && cachedUsageStats) {
+        setIsLoading(false);
+        setIsInitialLoad(false);
+        perfMonitor.end('dashboard-load');
+        console.log('✅ Dashboard loaded from cache');
+      }
+
+      // Fetch fresh data
+      perfMonitor.start('api-fetch');
       const [profileRes, jobsRes, keysRes, usageRes] = await Promise.all([
         fetch(buildApiUrl(API_ENDPOINTS.USER.PROFILE), {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -133,6 +170,7 @@ const Dashboard: React.FC = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
+      perfMonitor.end('api-fetch');
 
       // Check for authentication errors
       if (profileRes.status === 401 || jobsRes.status === 401 || keysRes.status === 401 || usageRes.status === 401) {
@@ -140,6 +178,7 @@ const Dashboard: React.FC = () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
+        dashboardCache.invalidateAll();
         window.location.href = '/login';
         return;
       }
@@ -148,6 +187,7 @@ const Dashboard: React.FC = () => {
         const profileData = await profileRes.json();
         const userData = profileData.user || profileData;
         setProfile(userData);
+        dashboardCache.set('profile', userData);
         
         // Update localStorage and notify Header component
         localStorage.setItem('user', JSON.stringify(userData));
@@ -158,14 +198,18 @@ const Dashboard: React.FC = () => {
 
       if (jobsRes.ok) {
         const jobsData = await jobsRes.json();
-        setJobs(jobsData.jobs || []);
+        const jobsList = jobsData.jobs || [];
+        setJobs(jobsList);
+        dashboardCache.set('jobs', jobsList);
       } else {
         console.log('❌ Jobs request failed:', jobsRes.status);
       }
 
       if (keysRes.ok) {
         const keysData = await keysRes.json();
-        setApiKeys(keysData.api_keys || []);
+        const keysList = keysData.api_keys || [];
+        setApiKeys(keysList);
+        dashboardCache.set('apiKeys', keysList);
       } else {
         console.log('❌ Keys request failed:', keysRes.status);
       }
@@ -173,6 +217,7 @@ const Dashboard: React.FC = () => {
       if (usageRes.ok) {
         const usageData = await usageRes.json();
         setUsageStats(usageData);
+        dashboardCache.set('usageStats', usageData);
       } else {
         console.log('❌ Usage request failed:', usageRes.status);
       }
@@ -186,6 +231,13 @@ const Dashboard: React.FC = () => {
 
     } catch (error) {
       console.error('❌ Failed to fetch dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+      setIsInitialLoad(false);
+      setRefreshing(false);
+      if (!cachedProfile || !cachedJobs || !cachedApiKeys || !cachedUsageStats) {
+        perfMonitor.end('dashboard-load');
+      }
     }
   };
 
@@ -198,16 +250,19 @@ const Dashboard: React.FC = () => {
       });
       
       if (response.ok) {
-        const data = await response.json();
-        setJobs(data.jobs || []);
+        const jobsData = await response.json();
+        const jobsList = jobsData.jobs || [];
+        setJobs(jobsList);
+        dashboardCache.set('jobs', jobsList);
+      } else {
+        console.error('Failed to refresh jobs:', response.status);
       }
     } catch (error) {
-      console.error('Failed to refresh jobs:', error);
+      console.error('Error refreshing jobs:', error);
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
-  };
-
-  const downloadFile = async (jobId: string, filename: string) => {
+  };  const downloadFile = async (jobId: string, filename: string) => {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.DOWNLOAD(jobId)), {
@@ -259,8 +314,16 @@ const Dashboard: React.FC = () => {
         setShowApiKeyForm(false);
         setNewApiKeyName('');
         
-        // Refresh the API keys list to show the new record
-        fetchDashboardData();
+        // Refresh only API keys instead of all dashboard data
+        const keysResponse = await fetch(buildApiUrl(API_ENDPOINTS.API_KEYS.LIST), {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (keysResponse.ok) {
+          const keysData = await keysResponse.json();
+          const keysList = keysData.api_keys || [];
+          setApiKeys(keysList);
+          dashboardCache.set('apiKeys', keysList);
+        }
         
         // Auto-hide the success panel after 30 seconds for security
         setTimeout(() => {
@@ -304,7 +367,16 @@ const Dashboard: React.FC = () => {
       });
 
       if (response.ok) {
-        fetchDashboardData();
+        // Refresh only API keys instead of all dashboard data
+        const keysResponse = await fetch(buildApiUrl(API_ENDPOINTS.API_KEYS.LIST), {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (keysResponse.ok) {
+          const keysData = await keysResponse.json();
+          const keysList = keysData.api_keys || [];
+          setApiKeys(keysList);
+          dashboardCache.set('apiKeys', keysList);
+        }
       } else {
         const error = await response.json();
         console.error('Failed to delete API key:', error.error);
@@ -411,11 +483,15 @@ const Dashboard: React.FC = () => {
       <Header />
       <div className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          {/* Dashboard Title */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-black">Dashboard</h1>
-            <p className="text-gray-700">Welcome back, {profile?.name || 'User'}</p>
-          </div>
+          {isLoading ? (
+            <DashboardSkeleton />
+          ) : (
+            <>
+              {/* Dashboard Title */}
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-black">Dashboard</h1>
+                <p className="text-gray-700">Welcome back, {profile?.name || 'User'}</p>
+              </div>
 
         {/* Overview Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -918,6 +994,8 @@ const Dashboard: React.FC = () => {
             </div>
           </TabsContent>
         </Tabs>
+            </>
+          )}
         </div>
       </div>
     </div>
