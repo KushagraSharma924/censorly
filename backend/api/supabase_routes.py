@@ -484,32 +484,58 @@ def upload_profile_image():
         # Generate unique filename
         unique_filename = f"profile_images/{user['id']}/{uuid.uuid4()}.{file_extension}"
         
+        logger.info(f"Attempting to upload profile image: {unique_filename}")
+        
         try:
             # Read file content
             file_content = file.read()
+            logger.info(f"File content read: {len(file_content)} bytes")
             
             # Upload to Supabase Storage
+            logger.info(f"Uploading to path: {unique_filename}")
             storage_response = supabase_service.client.storage.from_('profile-images').upload(
                 path=unique_filename,
                 file=file_content,
                 file_options={
                     'content-type': f'image/{file_extension}',
-                    'upsert': True  # Replace if exists
+                    'upsert': True
                 }
             )
             
-            if hasattr(storage_response, 'error') and storage_response.error:
+            logger.info(f"Storage response: {storage_response}")
+            
+            # Check if upload was successful
+            if storage_response and hasattr(storage_response, 'error') and storage_response.error:
                 logger.error(f"Supabase storage upload error: {storage_response.error}")
-                return jsonify({'error': 'Failed to upload image to storage'}), 500
+                return jsonify({'error': f'Failed to upload image to storage: {storage_response.error}'}), 500
+            
+            # Alternative: check for error in response data
+            if isinstance(storage_response, dict) and 'error' in storage_response:
+                logger.error(f"Supabase storage upload error: {storage_response['error']}")
+                return jsonify({'error': f'Failed to upload image to storage: {storage_response["error"]}'}), 500
             
             # Get public URL for the uploaded image
-            public_url_response = supabase_service.client.storage.from_('profile-images').get_public_url(unique_filename)
-            
-            if not public_url_response:
-                logger.error("Failed to get public URL for uploaded image")
+            try:
+                public_url_response = supabase_service.client.storage.from_('profile-images').get_public_url(unique_filename)
+                
+                # Handle different response formats
+                if isinstance(public_url_response, dict):
+                    if 'publicUrl' in public_url_response:
+                        image_url = public_url_response['publicUrl']
+                    elif 'signedUrl' in public_url_response:
+                        image_url = public_url_response['signedUrl']
+                    else:
+                        image_url = str(public_url_response)
+                else:
+                    image_url = str(public_url_response) if public_url_response else None
+                
+                if not image_url:
+                    logger.error(f"Failed to get public URL for uploaded image. Response: {public_url_response}")
+                    return jsonify({'error': 'Failed to get image URL'}), 500
+                    
+            except Exception as url_error:
+                logger.error(f"Error getting public URL: {url_error}")
                 return jsonify({'error': 'Failed to get image URL'}), 500
-            
-            image_url = public_url_response
             
             # Clean up old profile image if exists
             try:
