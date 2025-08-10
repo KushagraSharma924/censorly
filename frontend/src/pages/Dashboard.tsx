@@ -235,9 +235,6 @@ const Dashboard: React.FC = () => {
       setIsLoading(false);
       setIsInitialLoad(false);
       setRefreshing(false);
-      if (!cachedProfile || !cachedJobs || !cachedApiKeys || !cachedUsageStats) {
-        perfMonitor.end('dashboard-load');
-      }
     }
   };
 
