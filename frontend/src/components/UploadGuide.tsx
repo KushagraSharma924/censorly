@@ -26,8 +26,8 @@ export const UploadGuide = () => {
         </div>
         <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
           <Shield className="h-8 w-8 text-green-600 mx-auto mb-2" />
-          <p className="text-sm font-medium text-green-900">99.5% Accuracy</p>
-          <p className="text-xs text-green-600">AI powered</p>
+          <p className="text-sm font-medium text-green-900">High Accuracy</p>
+          <p className="text-xs text-green-600">0.8 threshold</p>
         </div>
         <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
           <FileVideo className="h-8 w-8 text-purple-600 mx-auto mb-2" />
@@ -61,8 +61,8 @@ export const UploadGuide = () => {
                 <Settings className="h-4 w-4 text-purple-600" />
               </div>
               <div>
-                <h4 className="font-medium text-gray-900">2. Choose Filter Mode</h4>
-                <p className="text-sm text-gray-600">Select how to handle inappropriate content: beep, mute, or cut (coming soon)</p>
+                <h4 className="font-medium text-gray-900">2. AI Auto-Configuration</h4>
+                <p className="text-sm text-gray-600">AI automatically sets optimal detection threshold (0.8) and beep censoring mode</p>
               </div>
             </div>
             
@@ -71,8 +71,8 @@ export const UploadGuide = () => {
                 <Clock className="h-4 w-4 text-yellow-600" />
               </div>
               <div>
-                <h4 className="font-medium text-gray-900">3. AI Processing</h4>
-                <p className="text-sm text-gray-600">Our AI analyzes your video and automatically detects and filters profanity</p>
+                <h4 className="font-medium text-gray-900">3. Transformer AI Processing</h4>
+                <p className="text-sm text-gray-600">HuggingFace transformer model analyzes audio with 290+ training samples</p>
               </div>
             </div>
             
@@ -105,11 +105,12 @@ export const UploadGuide = () => {
             <div className="flex items-start space-x-2">
               <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-blue-900">Upload Requirements</p>
+                <p className="text-sm font-medium text-blue-900">Real Capabilities</p>
                 <ul className="text-xs text-blue-700 mt-1 space-y-1">
-                  <li>• Maximum file size: 500MB per video</li>
-                  <li>• Recommended resolution: 720p or higher</li>
-                  <li>• Audio required for profanity detection</li>
+                  <li>• Max file size: 500MB (Basic), 100MB (Free)</li>
+                  <li>• Max duration: 30min (Basic), 5min (Free)</li>
+                  <li>• AI Model: HuggingFace Transformer</li>
+                  <li>• Training: 290+ sample dataset</li>
                 </ul>
               </div>
             </div>
