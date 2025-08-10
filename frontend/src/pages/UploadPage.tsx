@@ -7,32 +7,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/Header';
+import { UploadGuide } from '@/components/UploadGuide';
+import { EnhancedUploadArea } from '@/components/EnhancedUploadArea';
+import { FileStatusList, type FileStatusItem } from '@/components/FileStatusList';
 import { 
-  Upload, 
-  FileVideo, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Download,
   AlertCircle,
-  Trash2
+  Settings,
+  Zap
 } from 'lucide-react';
 import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
 
-interface UploadedFile {
-  file: File;
-  id: string;
-  progress: number;
-  status: 'uploading' | 'processing' | 'completed' | 'failed';
-  jobId?: string;
-  resultUrl?: string;
-  error?: string;
-}
+interface UploadedFile extends FileStatusItem {}
 
 const UploadPage: React.FC = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [uploadSettings, setUploadSettings] = useState({
     auto_censor: true,
     profanity_level: 'medium',
@@ -42,11 +34,14 @@ const UploadPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = (fileList: FileList) => {
+    setIsUploading(true);
+    
     const newFiles: UploadedFile[] = Array.from(fileList).map(file => ({
       file,
       id: Math.random().toString(36).substr(2, 9),
       progress: 0,
-      status: 'uploading'
+      status: 'uploading',
+      estimatedTime: Math.floor(file.size / (1024 * 1024)) * 30 // Rough estimate: 30 seconds per MB
     }));
 
     setFiles(prev => [...prev, ...newFiles]);
@@ -119,7 +114,27 @@ const UploadPage: React.FC = () => {
     } catch (error) {
       console.error('Upload error:', error);
       updateFileStatus(fileData.id, 'failed', 'Failed to start upload');
+    } finally {
+      // Check if all files are done uploading
+      setTimeout(() => {
+        setFiles(currentFiles => {
+          const allDone = currentFiles.every(f => 
+            f.status === 'completed' || f.status === 'failed'
+          );
+          if (allDone) {
+            setIsUploading(false);
+          }
+          return currentFiles;
+        });
+      }, 1000);
     }
+  };
+
+  const retryFile = (file: UploadedFile) => {
+    // Reset file status and retry upload
+    updateFileStatus(file.id, 'uploading');
+    updateFileProgress(file.id, 0);
+    uploadFile(file);
   };
 
   const pollJobStatus = async (fileId: string, jobId: string) => {
@@ -203,197 +218,66 @@ const UploadPage: React.FC = () => {
     }
   };
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files);
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(e.target.files);
-    }
-  };
-
-  const getStatusIcon = (status: UploadedFile['status']) => {
-    switch (status) {
-      case 'uploading':
-        return <Upload className="h-4 w-4 text-blue-500 animate-pulse" />;
-      case 'processing':
-        return <Clock className="h-4 w-4 text-blue-500 animate-spin" />;
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-    }
-  };
-
-  const getStatusColor = (status: UploadedFile['status']) => {
-    switch (status) {
-      case 'uploading':
-        return 'bg-blue-100 text-blue-800';
-      case 'processing':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
   return (
     <div className="min-h-screen bg-white">
       <Header />
       <div className="py-8 px-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Page Title */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-black">Upload Videos</h1>
+            <h1 className="text-3xl font-bold text-black">Upload & Clean Videos</h1>
             <p className="text-gray-700">
-              Upload your videos to detect and filter profanity with AI
+              Upload your videos to detect and filter profanity with advanced AI technology
             </p>
           </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Upload Section */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Upload Area */}
-            <Card className="border border-gray-200 bg-white">
-              <CardHeader>
-                <CardTitle className="text-black">Select Videos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                    dragActive 
-                      ? 'border-black bg-gray-50' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                >
-                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Drop your videos here
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Or click to browse and select files
-                  </p>
-                  <Button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mb-4"
-                  >
-                    Choose Files
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="video/*"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Supported formats: MP4, AVI, MOV, WMV, MKV (max 500MB per file)
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Enhanced Upload Area */}
+            <EnhancedUploadArea
+              onFileSelect={handleFiles}
+              isUploading={isUploading}
+              dragActive={dragActive}
+              onDragStateChange={setDragActive}
+              maxSize={500}
+              multiple={true}
+            />
 
             {/* Upload Queue */}
-            {files.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Upload Queue</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {files.map((file) => (
-                      <div key={file.id} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-3">
-                            <FileVideo className="h-5 w-5 text-gray-400" />
-                            <div>
-                              <p className="font-medium text-gray-900">{file.file.name}</p>
-                              <p className="text-sm text-gray-600">
-                                {formatFileSize(file.file.size)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <Badge className={getStatusColor(file.status)}>
-                              {getStatusIcon(file.status)}
-                              <span className="ml-1 capitalize">{file.status}</span>
-                            </Badge>
-                            {file.status === 'completed' && file.jobId && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => downloadFile(file.jobId!, file.file.name)}
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                Download
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeFile(file.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        {(file.status === 'uploading' || file.status === 'processing') && (
-                          <Progress value={file.progress} className="h-2" />
-                        )}
-                        
-                        {file.error && (
-                          <Alert className="mt-2 border-red-200 bg-red-50">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription className="text-red-700">
-                              {file.error}
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Settings Panel */}
-          <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Processing Settings</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Upload Queue</span>
+                  {files.length > 0 && (
+                    <Badge variant="outline">
+                      {files.filter(f => f.status === 'completed').length} / {files.length} completed
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FileStatusList
+                  files={files}
+                  onDownload={downloadFile}
+                  onRemove={removeFile}
+                  onRetry={retryFile}
+                  isLoading={isUploading && files.length === 0}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Settings & Guide Panel */}
+          <div className="space-y-6">
+            <UploadGuide />
+            {/* Processing Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Settings className="h-5 w-5 mr-2" />
+                  Processing Settings
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -460,50 +344,51 @@ const UploadPage: React.FC = () => {
                       custom_wordlist: e.target.value
                     }))}
                     className="mt-1"
-                    rows={4}
+                    rows={3}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Add custom words or phrases to be detected and censored
+                    Add custom words or phrases to be detected
                   </p>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Quick Stats */}
             <Card>
               <CardHeader>
-                <CardTitle>Usage Information</CardTitle>
+                <CardTitle className="flex items-center">
+                  <Zap className="h-5 w-5 mr-2" />
+                  Processing Info
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Detection method:</span>
-                    <span className="font-medium">Regex & Keyword</span>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-600">Detection method</p>
+                    <p className="font-medium">AI + Regex</p>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Processing method:</span>
-                    <span className="font-medium">Regex & Keyword Detection</span>
+                  <div>
+                    <p className="text-gray-600">Avg. processing</p>
+                    <p className="font-medium">2-5 minutes</p>
                   </div>
-                  <div className="text-xs text-orange-600 mt-1">
-                    Advanced AI detection coming in Pro tier
+                  <div>
+                    <p className="text-gray-600">Languages</p>
+                    <p className="font-medium">English</p>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Processing time:</span>
-                    <span className="font-medium">~2-5 minutes per video</span>
+                  <div>
+                    <p className="text-gray-600">Max file size</p>
+                    <p className="font-medium">500MB</p>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Supported languages:</span>
-                    <span className="font-medium">English only</span>
-                  </div>
-                  <div className="text-xs text-orange-600 mt-1">
-                    Multi-language support coming in Pro tier
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Max file size:</span>
-                    <span className="font-medium">500MB</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Concurrent uploads:</span>
-                    <span className="font-medium">Up to 3 files</span>
+                </div>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-start space-x-2">
+                    <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                    <div className="text-xs text-blue-700">
+                      <p className="font-medium">Pro features coming soon:</p>
+                      <p>• Multi-language support</p>
+                      <p>• Advanced AI detection</p>
+                      <p>• Batch processing</p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
