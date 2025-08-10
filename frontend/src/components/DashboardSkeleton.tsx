@@ -7,7 +7,10 @@ export const DashboardSkeleton = () => {
       {/* Title Skeleton */}
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-64" />
+        <div className="flex items-center space-x-2">
+          <span className="text-gray-700">Welcome back,</span>
+          <Skeleton className="h-4 w-24" />
+        </div>
       </div>
 
       {/* Overview Cards Skeleton */}

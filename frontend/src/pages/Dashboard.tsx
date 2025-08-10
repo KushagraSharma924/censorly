@@ -487,7 +487,11 @@ const Dashboard: React.FC = () => {
               {/* Dashboard Title */}
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-black">Dashboard</h1>
-                <p className="text-gray-700">Welcome back, {profile?.name || 'User'}</p>
+                <p className="text-gray-700">
+                  Welcome back, {profile?.name || (
+                    <Skeleton className="inline-block h-4 w-20" />
+                  )}
+                </p>
               </div>
 
         {/* Overview Cards */}

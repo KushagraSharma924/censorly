@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { EXTERNAL_URLS, buildApiUrl } from '@/config/api';
 import { authService } from '@/lib/auth-service';
 import { getProfileImageUrl, getUserInitials, getUserDisplayName, formatUserData, type UserProfile } from '@/lib/user-utils';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -218,15 +219,11 @@ export const Header: React.FC = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage 
-                          src={getProfileImageUrl(user)} 
-                          alt={getUserDisplayName(user) || 'User'}
-                        />
-                        <AvatarFallback className="bg-black text-white text-xs font-semibold">
-                          {getUserInitials(user)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <ProfileAvatar 
+                        user={user} 
+                        size="md"
+                        showSkeleton={loading}
+                      />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>

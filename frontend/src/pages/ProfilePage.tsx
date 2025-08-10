@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Header } from '@/components/Header';
 import { authService } from '@/lib/auth-service';
 import { getProfileImageUrl, getUserInitials, getUserDisplayName, formatUserData, type UserProfile } from '@/lib/user-utils';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { buildApiUrl, API_ENDPOINTS } from '@/config/api';
 import { 
   User, 
@@ -500,26 +501,12 @@ const ProfilePage: React.FC = () => {
                   <div className="flex items-center space-x-6">
                     <div className="relative group">
                       <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                        <img
-                          src={getProfileImageUrl(profile)}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            // Fallback to initials display
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const fallbackDiv = target.nextElementSibling as HTMLElement;
-                            if (fallbackDiv) {
-                              fallbackDiv.style.display = 'flex';
-                            }
-                          }}
+                        <ProfileAvatar 
+                          user={profile}
+                          size="xl"
+                          showSkeleton={isInitialLoad}
+                          className="w-full h-full"
                         />
-                        <div 
-                          className="w-full h-full rounded-full bg-black flex items-center justify-center text-white text-2xl font-bold"
-                          style={{ display: 'none' }}
-                        >
-                          {getUserInitials(profile)}
-                        </div>
                       </div>
                       
                       {/* Hidden file input */}
