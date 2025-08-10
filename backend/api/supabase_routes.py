@@ -487,45 +487,57 @@ def upload_profile_image():
         logger.info(f"Attempting to upload profile image: {unique_filename}")
         
         try:
-            # Read file content
+            # Read file content as bytes
+            file.seek(0)  # Reset file pointer to beginning
             file_content = file.read()
-            logger.info(f"File content read: {len(file_content)} bytes")
+            logger.info(f"File content read: {len(file_content)} bytes, type: {type(file_content)}")
             
-            # Upload to Supabase Storage
+            # Ensure we have bytes content
+            if isinstance(file_content, str):
+                file_content = file_content.encode('utf-8')
+            
+            # Upload to Supabase Storage with correct parameters
             logger.info(f"Uploading to path: {unique_filename}")
             storage_response = supabase_service.client.storage.from_('profile-images').upload(
-                path=unique_filename,
                 file=file_content,
-                file_options={
-                    'content-type': f'image/{file_extension}',
-                    'upsert': True
-                }
+                path=unique_filename,
+                file_options={'content-type': f'image/{file_extension}'}
             )
             
-            logger.info(f"Storage response: {storage_response}")
+            logger.info(f"Storage response type: {type(storage_response)}, content: {storage_response}")
             
-            # Check if upload was successful
-            if storage_response and hasattr(storage_response, 'error') and storage_response.error:
+            # Check for errors in the response
+            if hasattr(storage_response, 'error') and storage_response.error:
                 logger.error(f"Supabase storage upload error: {storage_response.error}")
                 return jsonify({'error': f'Failed to upload image to storage: {storage_response.error}'}), 500
             
-            # Alternative: check for error in response data
-            if isinstance(storage_response, dict) and 'error' in storage_response:
-                logger.error(f"Supabase storage upload error: {storage_response['error']}")
-                return jsonify({'error': f'Failed to upload image to storage: {storage_response["error"]}'}), 500
+            # Check if response is a dict with error
+            if isinstance(storage_response, dict):
+                if 'error' in storage_response and storage_response['error']:
+                    logger.error(f"Supabase storage upload error: {storage_response['error']}")
+                    return jsonify({'error': f'Failed to upload image to storage: {storage_response["error"]}'}), 500
+                
+                # Check for successful upload indicators
+                if 'path' in storage_response or 'Key' in storage_response or 'fullPath' in storage_response:
+                    logger.info("Upload appears successful based on response structure")
+                else:
+                    logger.warning(f"Unexpected response structure: {storage_response}")
             
             # Get public URL for the uploaded image
             try:
                 public_url_response = supabase_service.client.storage.from_('profile-images').get_public_url(unique_filename)
+                logger.info(f"Public URL response: {public_url_response}")
                 
                 # Handle different response formats
+                image_url = None
                 if isinstance(public_url_response, dict):
-                    if 'publicUrl' in public_url_response:
-                        image_url = public_url_response['publicUrl']
-                    elif 'signedUrl' in public_url_response:
-                        image_url = public_url_response['signedUrl']
-                    else:
-                        image_url = str(public_url_response)
+                    image_url = (public_url_response.get('publicUrl') or 
+                               public_url_response.get('signedUrl') or 
+                               public_url_response.get('url'))
+                elif hasattr(public_url_response, 'publicUrl'):
+                    image_url = public_url_response.publicUrl
+                elif isinstance(public_url_response, str):
+                    image_url = public_url_response
                 else:
                     image_url = str(public_url_response) if public_url_response else None
                 
