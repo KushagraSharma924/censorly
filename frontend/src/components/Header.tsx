@@ -13,33 +13,10 @@ import { getProfileImageUrl, getUserInitials, getUserDisplayName, formatUserData
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
-  const [loading, setLoading] = useState(!localStorage.getItem('access_token')); // Only loading if no token
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize with cached data immediately if available
-    const token = localStorage.getItem('access_token');
-    const cachedUser = localStorage.getItem('user');
-    
-    if (token && cachedUser) {
-      try {
-        const userData = JSON.parse(cachedUser);
-        if (userData && userData.email) {
-          console.log('Header: Cached user data:', userData); // Debug log
-          const formattedUser = formatUserData(userData);
-          console.log('Header: Formatted user:', formattedUser); // Debug log
-          if (formattedUser) {
-            setUser(formattedUser);
-            setIsAuthenticated(true);
-            setLoading(false);
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing cached user data:', error);
-      }
-    }
-
-    // Then check auth status for fresh data
     checkAuthStatus();
     
     // Also listen for storage changes (e.g., login/logout in another tab)
@@ -64,9 +41,8 @@ export const Header: React.FC = () => {
 
       // We have a token, so user is authenticated
       setIsAuthenticated(true);
-      setLoading(false); // Stop loading immediately when we know user is authenticated
 
-      // First, try to get user from localStorage for immediate display
+      // Try to get user from localStorage first for immediate display
       const storedUserData = localStorage.getItem('user');
       if (storedUserData) {
         try {
@@ -75,23 +51,7 @@ export const Header: React.FC = () => {
             const formattedUser = formatUserData(storedUser);
             if (formattedUser) {
               setUser(formattedUser);
-            } else {
-              // Create minimal user object
-              setUser({
-                id: storedUser.id || '',
-                email: storedUser.email || '',
-                name: storedUser.name || storedUser.full_name || '',
-                full_name: storedUser.full_name || '',
-                profile_image: '',
-                profile_image_url: '',
-                avatar_url: '',
-                subscription_status: 'active',
-                subscription_tier: 'free',
-                created_at: '',
-                updated_at: '',
-                usage_count: 0,
-                monthly_limit: 100,
-              });
+              setLoading(false); // Set loading false when we have cached data
             }
           }
         } catch (parseError) {
@@ -99,7 +59,7 @@ export const Header: React.FC = () => {
         }
       }
 
-      // Fetch fresh user data from API in the background (don't block UI)
+      // Fetch fresh user data from API in the background
       try {
         const freshProfile = await authService.getProfile();
         if (freshProfile && freshProfile.email) {
@@ -112,18 +72,25 @@ export const Header: React.FC = () => {
         }
       } catch (apiError) {
         console.log('API call failed, using stored data:', apiError);
-        // Continue with stored data if API fails
+        // If API fails but we have a token, still consider user authenticated
+        // Only if we have no user data at all should we clear auth
+        if (!user) {
+          console.log('No user data and API failed, clearing auth');
+          setIsAuthenticated(false);
+          setUser(null);
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user');
+        }
       }
 
     } catch (error) {
       console.error('Auth check failed:', error);
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setIsAuthenticated(false);
-        setUser(null);
-      }
+      // Clear everything on error
+      setIsAuthenticated(false);
+      setUser(null);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
     } finally {
-      // Ensure loading is always set to false
       setLoading(false);
     }
   };
@@ -139,9 +106,14 @@ export const Header: React.FC = () => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      // Clear all auth data
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      
       // Clear local state
       setUser(null);
       setIsAuthenticated(false);
+      setLoading(false);
       
       // Navigate to home
       navigate('/');
@@ -221,7 +193,6 @@ export const Header: React.FC = () => {
                         <AvatarImage 
                           src={getProfileImageUrl(user)} 
                           alt={getUserDisplayName(user) || 'User'}
-                          onError={() => console.log('Avatar image failed to load for user:', user)}
                         />
                         <AvatarFallback className="bg-black text-white text-xs font-semibold">
                           {getUserInitials(user)}
