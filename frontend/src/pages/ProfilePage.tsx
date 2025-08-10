@@ -172,6 +172,8 @@ const ProfilePage: React.FC = () => {
             setProfile(formattedProfile);
             // Update localStorage with fresh data
             localStorage.setItem('user', JSON.stringify(newProfileData));
+            // Notify Header component of user data update
+            window.dispatchEvent(new CustomEvent('userDataUpdated'));
           }
         }
         

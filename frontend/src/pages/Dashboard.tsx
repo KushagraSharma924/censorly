@@ -146,7 +146,12 @@ const Dashboard: React.FC = () => {
 
       if (profileRes.ok) {
         const profileData = await profileRes.json();
-        setProfile(profileData.user || profileData);
+        const userData = profileData.user || profileData;
+        setProfile(userData);
+        
+        // Update localStorage and notify Header component
+        localStorage.setItem('user', JSON.stringify(userData));
+        window.dispatchEvent(new CustomEvent('userDataUpdated'));
       } else {
         console.log('❌ Profile request failed:', profileRes.status);
       }
