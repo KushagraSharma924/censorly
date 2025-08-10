@@ -13,10 +13,33 @@ import { getProfileImageUrl, getUserInitials, getUserDisplayName, formatUserData
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
+  const [loading, setLoading] = useState(!localStorage.getItem('access_token')); // Only loading if no token
 
   useEffect(() => {
+    // Initialize with cached data immediately if available
+    const token = localStorage.getItem('access_token');
+    const cachedUser = localStorage.getItem('user');
+    
+    if (token && cachedUser) {
+      try {
+        const userData = JSON.parse(cachedUser);
+        if (userData && userData.email) {
+          console.log('Header: Cached user data:', userData); // Debug log
+          const formattedUser = formatUserData(userData);
+          console.log('Header: Formatted user:', formattedUser); // Debug log
+          if (formattedUser) {
+            setUser(formattedUser);
+            setIsAuthenticated(true);
+            setLoading(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing cached user data:', error);
+      }
+    }
+
+    // Then check auth status for fresh data
     checkAuthStatus();
     
     // Also listen for storage changes (e.g., login/logout in another tab)
@@ -41,8 +64,9 @@ export const Header: React.FC = () => {
 
       // We have a token, so user is authenticated
       setIsAuthenticated(true);
+      setLoading(false); // Stop loading immediately when we know user is authenticated
 
-      // Try to get user from localStorage
+      // First, try to get user from localStorage for immediate display
       const storedUserData = localStorage.getItem('user');
       if (storedUserData) {
         try {
@@ -75,13 +99,15 @@ export const Header: React.FC = () => {
         }
       }
 
-      // Try to fetch fresh user data from API
+      // Fetch fresh user data from API in the background (don't block UI)
       try {
         const freshProfile = await authService.getProfile();
         if (freshProfile && freshProfile.email) {
           const formattedProfile = formatUserData(freshProfile);
           if (formattedProfile) {
             setUser(formattedProfile);
+            // Update localStorage with fresh data
+            localStorage.setItem('user', JSON.stringify(freshProfile));
           }
         }
       } catch (apiError) {
@@ -97,6 +123,7 @@ export const Header: React.FC = () => {
         setUser(null);
       }
     } finally {
+      // Ensure loading is always set to false
       setLoading(false);
     }
   };
@@ -187,23 +214,14 @@ export const Header: React.FC = () => {
               <div className="animate-pulse h-8 bg-gray-200 rounded w-24"></div>
             ) : isAuthenticated ? (
               <div className="flex items-center space-x-3">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="border-gray-300 text-black hover:bg-gray-50 hidden md:flex"
-                  onClick={() => navigate('/dashboard')}
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Dashboard
-                </Button>
-                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <Avatar className="h-8 w-8">
                         <AvatarImage 
                           src={getProfileImageUrl(user)} 
-                          alt={getUserDisplayName(user)}
+                          alt={getUserDisplayName(user) || 'User'}
+                          onError={() => console.log('Avatar image failed to load for user:', user)}
                         />
                         <AvatarFallback className="bg-black text-white text-xs font-semibold">
                           {getUserInitials(user)}
@@ -214,9 +232,9 @@ export const Header: React.FC = () => {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <div className="flex items-center justify-start gap-2 p-2">
                       <div className="flex flex-col space-y-1 leading-none">
-                        <p className="font-medium">{getUserDisplayName(user)}</p>
+                        <p className="font-medium">{getUserDisplayName(user) || 'User'}</p>
                         <p className="w-[200px] truncate text-sm text-muted-foreground">
-                          {user?.email}
+                          {user?.email || 'No email'}
                         </p>
                       </div>
                     </div>
