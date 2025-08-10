@@ -9,6 +9,7 @@ import Dashboard from '@/pages/Dashboard';
 import PricingPage from '@/pages/PricingPage';
 import UploadPage from '@/pages/UploadPage';
 import ProfilePage from '@/pages/ProfilePage';
+import Docs from '@/pages/Docs';
 
 // Simple auth check
 const isAuthenticated = () => {
@@ -41,6 +42,7 @@ const App = () => (
             } 
           />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/docs" element={<Docs />} />
           
           {/* Protected routes */}
           <Route 

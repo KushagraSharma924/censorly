@@ -38,6 +38,7 @@ import {
   Rocket,
   ChevronRight,
   Timer,
+  BookOpen,
   Github,
   Mic
 } from 'lucide-react';
@@ -144,7 +145,7 @@ const HomePage: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
             <Button size="lg" className="text-lg px-8 py-4 bg-black text-white hover:bg-gray-800 shadow-lg transform hover:scale-105 transition-all duration-200" onClick={() => window.location.href = '/login'}>
               <Rocket className="mr-2 h-5 w-5" />
               Start Free Trial
@@ -153,6 +154,18 @@ const HomePage: React.FC = () => {
             <Button variant="outline" size="lg" className="text-lg px-8 py-4 border-2 border-black text-black hover:bg-gray-50 transform hover:scale-105 transition-all duration-200">
               <Play className="mr-2 h-5 w-5" />
               Watch 2-Min Demo
+            </Button>
+          </div>
+          
+          <div className="flex justify-center mb-8">
+            <Button 
+              variant="ghost" 
+              size="lg" 
+              className="text-lg px-6 py-3 text-gray-600 hover:text-black hover:bg-gray-100 transition-all duration-200"
+              onClick={() => window.location.href = '/docs'}
+            >
+              <BookOpen className="mr-2 h-5 w-5" />
+              View Documentation
             </Button>
           </div>
           
@@ -696,11 +709,11 @@ const HomePage: React.FC = () => {
             <div className="mt-4 flex flex-wrap gap-4">
               <div className="flex items-center text-sm">
                 <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
-                <span>SDKs for Python, Node.js, PHP</span>
+                <span>REST API with JWT authentication</span>
               </div>
               <div className="flex items-center text-sm">
                 <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
-                <span>Webhook notifications</span>
+                <span>SDKs coming Q4 2025</span>
               </div>
               <div className="flex items-center text-sm">
                 <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
@@ -905,8 +918,8 @@ const HomePage: React.FC = () => {
               <h4 className="font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="/pricing" className="hover:text-white">Pricing</a></li>
-                <li><a href="#" className="hover:text-white">API Documentation</a></li>
-                <li><a href="#" className="hover:text-white">Features</a></li>
+                <li><a href="/docs" className="hover:text-white">API Documentation</a></li>
+                <li><a href="#features" className="hover:text-white">Features</a></li>
               </ul>
             </div>
             <div>

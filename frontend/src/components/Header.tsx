@@ -126,7 +126,7 @@ export const Header: React.FC = () => {
 
   const navItems = [
     { label: 'Pricing', href: '/pricing' },
-    { label: 'Documentation', href: '#docs' },
+    { label: 'Documentation', href: '/docs' },
   ];
 
   const handleLogout = async () => {
