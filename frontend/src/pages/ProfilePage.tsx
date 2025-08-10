@@ -28,7 +28,8 @@ import {
   Camera,
   RefreshCw,
   AlertCircle,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 
 interface ProfileFormData {
@@ -52,6 +53,8 @@ const ProfilePage: React.FC = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordChangeMode, setPasswordChangeMode] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageDeleting, setImageDeleting] = useState(false);
 
   useEffect(() => {
     if (isInitialLoad) {
@@ -187,6 +190,143 @@ const ProfilePage: React.FC = () => {
       setError('Failed to update profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleProfilePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    setImageUploading(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('profile_image', file);
+
+      const response = await fetch(buildApiUrl('/api/auth/upload-profile-image'), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Update profile with new image URL
+        if (result.profile_image_url || result.image_url) {
+          const updatedProfile = {
+            ...profile,
+            profile_image_url: result.profile_image_url || result.image_url,
+            profile_image: result.profile_image_url || result.image_url
+          };
+          
+          setProfile(updatedProfile);
+          
+          // Update localStorage
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const updatedUser = {
+            ...currentUser,
+            profile_image_url: result.profile_image_url || result.image_url,
+            profile_image: result.profile_image_url || result.image_url
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          
+          // Notify Header component
+          window.dispatchEvent(new CustomEvent('userDataUpdated'));
+          
+          setMessage('Profile photo updated successfully');
+        }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to upload profile photo');
+      }
+    } catch (error) {
+      console.error('Profile photo upload error:', error);
+      setError('Failed to upload profile photo');
+    } finally {
+      setImageUploading(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
+  const handleDeleteProfilePhoto = async () => {
+    if (!profile?.profile_image_url) {
+      setError('No profile photo to delete');
+      return;
+    }
+
+    setImageDeleting(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
+      const response = await fetch(buildApiUrl('/api/auth/delete-profile-image'), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        // Update profile to remove image
+        const updatedProfile = {
+          ...profile,
+          profile_image_url: '',
+          profile_image: ''
+        };
+        
+        setProfile(updatedProfile);
+        
+        // Update localStorage
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const updatedUser = {
+          ...currentUser,
+          profile_image_url: '',
+          profile_image: ''
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        // Notify Header component
+        window.dispatchEvent(new CustomEvent('userDataUpdated'));
+        
+        setMessage('Profile photo deleted successfully');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to delete profile photo');
+      }
+    } catch (error) {
+      console.error('Profile photo delete error:', error);
+      setError('Failed to delete profile photo');
+    } finally {
+      setImageDeleting(false);
     }
   };
 
@@ -381,9 +521,30 @@ const ProfilePage: React.FC = () => {
                           {getUserInitials(profile)}
                         </div>
                       </div>
-                      <button className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-700 transition-colors group-hover:scale-110 transform duration-200">
-                        <Camera className="w-3 h-3" />
-                      </button>
+                      
+                      {/* Hidden file input */}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePhotoUpload}
+                        className="hidden"
+                        id="profile-photo-upload"
+                        disabled={imageUploading}
+                      />
+                      
+                      {/* Camera button that triggers file input */}
+                      <label
+                        htmlFor="profile-photo-upload"
+                        className={`absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-700 transition-colors group-hover:scale-110 transform duration-200 cursor-pointer ${
+                          imageUploading ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {imageUploading ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Camera className="w-3 h-3" />
+                        )}
+                      </label>
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold">{getUserDisplayName(profile)}</h3>
@@ -394,6 +555,35 @@ const ProfilePage: React.FC = () => {
                       <p className="text-xs text-gray-400 mt-1">
                         User ID: {profile.id}
                       </p>
+                      {imageUploading && (
+                        <p className="text-xs text-blue-600 mt-2 flex items-center">
+                          <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                          Uploading photo...
+                        </p>
+                      )}
+                      {imageDeleting && (
+                        <p className="text-xs text-red-600 mt-2 flex items-center">
+                          <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                          Deleting photo...
+                        </p>
+                      )}
+                      <div className="flex items-center space-x-4 mt-2">
+                        <p className="text-xs text-gray-400">
+                          Click the camera icon to change your profile photo
+                        </p>
+                        {profile.profile_image_url && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleDeleteProfilePhoto}
+                            disabled={imageDeleting || imageUploading}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs p-1 h-auto"
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
 

@@ -434,6 +434,7 @@ def get_profile():
                 'email': user['email'],
                 'name': user['full_name'],  # Frontend expects 'name'
                 'full_name': user['full_name'],  # Keep both for compatibility
+                'profile_image_url': user.get('profile_image_url', ''),  # Add profile image
                 'subscription_tier': user['subscription_tier'],
                 'subscription_status': 'active' if user.get('is_active', True) else 'inactive',  # Add missing field
                 'videos_processed': user.get('videos_processed', 0),
@@ -448,6 +449,155 @@ def get_profile():
     except Exception as e:
         logger.error(f"Get profile error: {str(e)}")
         return jsonify({'error': 'Failed to get profile'}), 500
+
+@supabase_bp.route('/auth/upload-profile-image', methods=['POST'])
+@supabase_auth_required
+def upload_profile_image():
+    """Upload and update user profile image using Supabase Storage."""
+    try:
+        user = request.current_user
+        
+        # Check if file is in request
+        if 'profile_image' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['profile_image']
+        
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        file_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        
+        if file_extension not in allowed_extensions:
+            return jsonify({'error': 'Invalid file type. Allowed: PNG, JPG, JPEG, GIF, WEBP'}), 400
+        
+        # Validate file size (5MB limit)
+        file.seek(0, 2)  # Seek to end
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+        
+        if file_size > 5 * 1024 * 1024:  # 5MB
+            return jsonify({'error': 'File too large. Maximum size is 5MB'}), 400
+        
+        # Generate unique filename
+        unique_filename = f"profile_images/{user['id']}/{uuid.uuid4()}.{file_extension}"
+        
+        try:
+            # Read file content
+            file_content = file.read()
+            
+            # Upload to Supabase Storage
+            storage_response = supabase_service.client.storage.from_('profile-images').upload(
+                path=unique_filename,
+                file=file_content,
+                file_options={
+                    'content-type': f'image/{file_extension}',
+                    'upsert': True  # Replace if exists
+                }
+            )
+            
+            if hasattr(storage_response, 'error') and storage_response.error:
+                logger.error(f"Supabase storage upload error: {storage_response.error}")
+                return jsonify({'error': 'Failed to upload image to storage'}), 500
+            
+            # Get public URL for the uploaded image
+            public_url_response = supabase_service.client.storage.from_('profile-images').get_public_url(unique_filename)
+            
+            if not public_url_response:
+                logger.error("Failed to get public URL for uploaded image")
+                return jsonify({'error': 'Failed to get image URL'}), 500
+            
+            image_url = public_url_response
+            
+            # Clean up old profile image if exists
+            try:
+                if user.get('profile_image_url') and 'profile-images' in user.get('profile_image_url', ''):
+                    # Extract old file path from URL
+                    old_url = user['profile_image_url']
+                    if '/profile-images/' in old_url:
+                        old_path = old_url.split('/profile-images/')[1].split('?')[0]  # Remove query params
+                        if old_path != unique_filename:  # Don't delete if it's the same file
+                            supabase_service.client.storage.from_('profile-images').remove([f"profile_images/{old_path}"])
+                            logger.info(f"Cleaned up old profile image: profile_images/{old_path}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to cleanup old profile image: {cleanup_error}")
+                # Continue anyway, old file cleanup is not critical
+            
+            # Update user profile with image URL
+            update_result = supabase_service.client.table("users").update({
+                "profile_image_url": image_url,
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("id", user['id']).execute()
+            
+            if update_result.data:
+                logger.info(f"Profile image updated for user {user['id']}: {unique_filename}")
+                return jsonify({
+                    'message': 'Profile image updated successfully',
+                    'profile_image_url': image_url,
+                    'file_path': unique_filename
+                }), 200
+            else:
+                # If database update fails, try to clean up the uploaded file
+                try:
+                    supabase_service.client.storage.from_('profile-images').remove([unique_filename])
+                except:
+                    pass
+                return jsonify({'error': 'Failed to update profile in database'}), 500
+                
+        except Exception as storage_error:
+            logger.error(f"Storage operation error: {str(storage_error)}")
+            return jsonify({'error': f'Storage error: {str(storage_error)}'}), 500
+            
+    except Exception as e:
+        logger.error(f"Upload profile image error: {str(e)}")
+        return jsonify({'error': 'Failed to upload profile image'}), 500
+
+@supabase_bp.route('/auth/delete-profile-image', methods=['DELETE'])
+@supabase_auth_required
+def delete_profile_image():
+    """Delete user's profile image."""
+    try:
+        user = request.current_user
+        
+        # Check if user has a profile image
+        if not user.get('profile_image_url'):
+            return jsonify({'error': 'No profile image to delete'}), 400
+        
+        # Extract file path from URL if it's a Supabase Storage URL
+        image_url = user['profile_image_url']
+        if '/profile-images/' in image_url:
+            try:
+                # Extract file path
+                file_path = image_url.split('/profile-images/')[1].split('?')[0]  # Remove query params
+                full_path = f"profile_images/{file_path}"
+                
+                # Delete from storage
+                delete_response = supabase_service.client.storage.from_('profile-images').remove([full_path])
+                
+                logger.info(f"Deleted profile image from storage: {full_path}")
+            except Exception as storage_error:
+                logger.warning(f"Failed to delete image from storage: {storage_error}")
+                # Continue anyway, we'll still clear the URL from database
+        
+        # Update user profile to remove image URL
+        update_result = supabase_service.client.table("users").update({
+            "profile_image_url": None,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", user['id']).execute()
+        
+        if update_result.data:
+            logger.info(f"Profile image deleted for user {user['id']}")
+            return jsonify({
+                'message': 'Profile image deleted successfully'
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to update profile in database'}), 500
+            
+    except Exception as e:
+        logger.error(f"Delete profile image error: {str(e)}")
+        return jsonify({'error': 'Failed to delete profile image'}), 500
 
 @supabase_bp.route('/auth/usage', methods=['GET'])
 # @supabase_auth_required  # Temporarily disabled for testing
