@@ -34,16 +34,18 @@ const PricingPage: React.FC = () => {
       billing_cycle: 'monthly',
       popular: true,
       features: [
-        '🚀 4x more videos (40 vs 10 per month)',
-        '⚡ 4x more API processing calls (40 vs 10)',
-        '📊 2x more general API calls (100 vs 50)',
-        '🔑 More API keys (10 vs 3 maximum)',
-        '💾 Same file size limit (100MB)',
-        '🎯 Advanced regex & keyword detection',
-        '🌍 English language support',
+        '🎥 50 videos per month (5x more than free)',
+        '⚡ 40 video processing calls (4x more than free)',
+        '📊 100 general API calls (2x more than free)',
+        '🔑 10 API keys maximum (vs 3 on free)',
+        '💾 500MB max file size (5x larger than free)',
+        '� Medium Whisper model (better transcription)',
+        '⏱️ 30 minutes max video length (vs 5 minutes)',
+        '🌍 Multi-language support (EN/HI/Hinglish)',
+        '🎯 Advanced profanity detection',
         '💬 Priority email support',
-        '📈 Usage analytics dashboard',
-        '🔄 Monthly usage resets'
+        '📈 Advanced usage analytics',
+        '🔄 Monthly usage resets automatically'
       ]
     }
   };
@@ -184,21 +186,29 @@ const PricingPage: React.FC = () => {
               <CardTitle className="text-2xl text-gray-900">Basic</CardTitle>
               <div className="text-4xl font-bold text-blue-600">₹399</div>
               <p className="text-gray-600">per month</p>
-              <p className="text-sm text-blue-600 font-medium">⚡ 4x More Powerful Than Free</p>
+              <p className="text-sm text-blue-600 font-medium">⚡ 5x More Powerful Than Free</p>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-center">
                   <Check className="h-4 w-4 text-blue-500 mr-2" />
-                  <span className="text-sm">40 videos/month</span>
+                  <span className="text-sm">50 videos/month</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="h-4 w-4 text-blue-500 mr-2" />
-                  <span className="text-sm">40 API processing calls</span>
+                  <span className="text-sm">40 video processing calls</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="h-4 w-4 text-blue-500 mr-2" />
-                  <span className="text-sm">100 general API calls</span>
+                  <span className="text-sm">500MB max file size</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">Medium Whisper model</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-4 w-4 text-blue-500 mr-2" />
+                  <span className="text-sm">30 minutes max video length</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="h-4 w-4 text-blue-500 mr-2" />
@@ -206,19 +216,11 @@ const PricingPage: React.FC = () => {
                 </li>
                 <li className="flex items-center">
                   <Check className="h-4 w-4 text-blue-500 mr-2" />
-                  <span className="text-sm">100MB file size</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="h-4 w-4 text-blue-500 mr-2" />
-                  <span className="text-sm">Advanced detection</span>
+                  <span className="text-sm">Multi-language support</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="h-4 w-4 text-blue-500 mr-2" />
                   <span className="text-sm">Priority email support</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="h-4 w-4 text-blue-500 mr-2" />
-                  <span className="text-sm">Usage analytics dashboard</span>
                 </li>
               </ul>
               <Button 
@@ -266,7 +268,7 @@ const PricingPage: React.FC = () => {
           
           <div className="mt-8 text-center">
             <p className="text-gray-600 mb-4">
-              <strong>Only ₹399/month</strong> - Less than ₹13 per day for 4x the capacity!
+              <strong>Only ₹399/month</strong> - Less than ₹13 per day for 5x the capacity!
             </p>
             <Button 
               size="lg" 
