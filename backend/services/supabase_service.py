@@ -224,6 +224,61 @@ class SupabaseService:
             logger.error(f"Update job error: {str(e)}")
             return {"success": False, "error": str(e)}
     
+    def get_plan_limits(self, subscription_tier: str) -> Dict[str, Any]:
+        """Get plan limits for a subscription tier."""
+        plan_limits = {
+            'free': {
+                'monthly_limit': 5,
+                'file_size_limit': 100 * 1024 * 1024,  # 100MB
+                'duration_limit': 300,  # 5 minutes
+                'whisper_model': 'base'  # Base model for free tier
+            },
+            'basic': {
+                'monthly_limit': 50,
+                'file_size_limit': 500 * 1024 * 1024,  # 500MB
+                'duration_limit': 1800,  # 30 minutes
+                'whisper_model': 'medium'  # Medium model for basic tier
+            },
+            'pro': {
+                'monthly_limit': 200,
+                'file_size_limit': 1024 * 1024 * 1024,  # 1GB
+                'duration_limit': 3600,  # 60 minutes
+                'whisper_model': 'medium'  # Keep medium for pro
+            },
+            'enterprise': {
+                'monthly_limit': -1,  # Unlimited
+                'file_size_limit': 2 * 1024 * 1024 * 1024,  # 2GB
+                'duration_limit': 7200,  # 120 minutes
+                'whisper_model': 'large'  # Large model for enterprise
+            }
+        }
+        
+        return plan_limits.get(subscription_tier, plan_limits['free'])
+    
+    def increment_api_key_usage(self, api_key_id: str) -> bool:
+        """Increment API key usage counter."""
+        try:
+            # Get current usage
+            result = self.client.table("api_keys").select("usage_count").eq("id", api_key_id).execute()
+            
+            if result.data:
+                current_usage = result.data[0].get('usage_count', 0)
+                new_usage = current_usage + 1
+                
+                # Update usage
+                self.client.table("api_keys").update({
+                    "usage_count": new_usage,
+                    "last_used": datetime.utcnow().isoformat()
+                }).eq("id", api_key_id).execute()
+                
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Increment API key usage error: {str(e)}")
+            return False
+    
     # API Key Management
     def create_api_key(self, user_id: str, name: str) -> Dict[str, Any]:
         """Create a new API key."""

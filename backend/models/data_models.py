@@ -143,7 +143,7 @@ class AppConfig:
     allowed_extensions: Optional[List[str]] = None
     upload_folder: Path = Path('uploads')
     processed_folder: Path = Path('processed')
-    whisper_model: str = "base"
+    whisper_model: str = "base"  # Free tier default, upgraded based on subscription
     enable_nsfw_detection: bool = False
     cors_origins: Optional[List[str]] = None
     

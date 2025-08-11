@@ -79,7 +79,7 @@ class Config:
     DEFAULT_RATE_LIMIT = "100 per hour"
     
     # Processing settings (preserved from original)
-    DEFAULT_WHISPER_MODEL = 'medium'  # Options: tiny, base, small, medium, large - medium for better Hindi accuracy
+    DEFAULT_WHISPER_MODEL = 'base'  # Default for free tier. Options: tiny, base, small, medium, large
     AUDIO_SAMPLE_RATE = 16000
     AUDIO_CHANNELS = 1  # Mono
     MAX_CONCURRENT_JOBS = 3

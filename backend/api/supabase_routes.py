@@ -3,7 +3,7 @@ Supabase-based API Routes for AI Profanity Filter SaaS Platform
 Complete replacement for SQLAlchemy-based routes using pure Supabase.
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_file
 from functools import wraps
 import logging
 from datetime import datetime, timedelta
@@ -11,7 +11,11 @@ import uuid
 import json
 import jwt
 import time
+import os
+import shutil
+from pathlib import Path
 from collections import defaultdict
+from werkzeug.utils import secure_filename
 
 from services.supabase_service import supabase_service
 
@@ -928,6 +932,217 @@ def get_job(job_id):
     except Exception as e:
         logger.error(f"Get job error: {str(e)}")
         return jsonify({'error': 'Failed to get job'}), 500
+
+# ===== VIDEO PROCESSING ENDPOINTS =====
+
+@supabase_bp.route('/process-video', methods=['POST'])
+@supabase_auth_required
+def process_video():
+    """
+    Main video processing endpoint.
+    Handles video upload and initiates processing job.
+    """
+    try:
+        user = request.current_user
+        
+        # Check if file is present
+        if 'video' not in request.files:
+            return jsonify({'error': 'No video file provided'}), 400
+        
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.webm'}
+        file_extension = os.path.splitext(file.filename)[1].lower()
+        if file_extension not in allowed_extensions:
+            return jsonify({'error': 'Unsupported file format. Supported: MP4, AVI, MOV, MKV, WMV, WEBM'}), 400
+        
+        # Check file size (500MB limit)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        
+        max_size = 500 * 1024 * 1024  # 500MB
+        if file_size > max_size:
+            return jsonify({'error': 'File size exceeds 500MB limit'}), 400
+        
+        # Get processing parameters
+        censoring_mode = request.form.get('censoring_mode', 'beep')
+        profanity_threshold = float(request.form.get('profanity_threshold', 0.8))
+        languages = json.loads(request.form.get('languages', '["en"]'))
+        
+        # Validate parameters
+        if censoring_mode not in ['beep', 'mute', 'cut']:
+            return jsonify({'error': 'Invalid censoring mode. Must be: beep, mute, or cut'}), 400
+        
+        if not 0.0 <= profanity_threshold <= 1.0:
+            return jsonify({'error': 'Profanity threshold must be between 0.0 and 1.0'}), 400
+        
+        # Check subscription limits
+        plan_limits = supabase_service.get_plan_limits(user['subscription_tier'])
+        
+        # Check monthly processing limit
+        if plan_limits['monthly_limit'] > 0:
+            current_month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            monthly_jobs = supabase_service.client.table("jobs").select("id")\
+                .eq("user_id", user['id'])\
+                .gte("created_at", current_month_start.isoformat())\
+                .execute()
+            
+            if len(monthly_jobs.data or []) >= plan_limits['monthly_limit']:
+                return jsonify({'error': 'Monthly processing limit reached'}), 429
+        
+        # Create upload directory
+        upload_dir = Path(f"uploads/{user['id']}")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save uploaded file
+        filename = secure_filename(file.filename)
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        safe_filename = f"{timestamp}_{filename}"
+        file_path = upload_dir / safe_filename
+        
+        file.save(str(file_path))
+        
+        # Create processing job
+        job_data = {
+            'original_filename': filename,
+            'stored_filename': safe_filename,
+            'file_path': str(file_path),
+            'file_size': file_size,
+            'censoring_mode': censoring_mode,
+            'profanity_threshold': profanity_threshold,
+            'languages': json.dumps(languages),
+            'status': 'pending',
+            'created_at': datetime.utcnow().isoformat()
+        }
+        
+        result = supabase_service.create_job(user['id'], job_data)
+        
+        if not result['success']:
+            # Clean up uploaded file on failure
+            if file_path.exists():
+                file_path.unlink()
+            return jsonify({'error': result['error']}), 500
+        
+        job_id = result['job']['id']
+        
+        # TODO: Queue background processing task
+        # For now, return job_id for polling
+        
+        logger.info(f"Video upload successful. Job ID: {job_id}, User: {user['email']}")
+        
+        return jsonify({
+            'message': 'Video uploaded successfully',
+            'job_id': job_id,
+            'status': 'pending',
+            'estimated_processing_time': '2-5 minutes'
+        }), 202
+        
+    except Exception as e:
+        logger.error(f"Video processing error: {str(e)}")
+        return jsonify({'error': 'Video processing failed'}), 500
+
+@supabase_bp.route('/jobs/<job_id>/status', methods=['GET'])
+@supabase_auth_required
+def get_job_status(job_id):
+    """Get detailed job status and progress."""
+    try:
+        user = request.current_user
+        job = supabase_service.get_job(job_id, user['id'])
+        
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        return jsonify({
+            'job_id': job['id'],
+            'status': job['status'],
+            'progress': job.get('progress', 0),
+            'created_at': job['created_at'],
+            'updated_at': job.get('updated_at'),
+            'error_message': job.get('error_message'),
+            'result': job.get('result')
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Get job status error: {str(e)}")
+        return jsonify({'error': 'Failed to get job status'}), 500
+
+@supabase_bp.route('/download/<job_id>', methods=['GET'])
+@supabase_auth_required
+def download_processed_video(job_id):
+    """Download processed video file."""
+    try:
+        user = request.current_user
+        job = supabase_service.get_job(job_id, user['id'])
+        
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        if job['status'] != 'completed':
+            return jsonify({'error': 'Job not completed yet'}), 400
+        
+        # Check if processed file exists
+        result = job.get('result', {})
+        processed_file_path = result.get('processed_file_path')
+        
+        if not processed_file_path or not os.path.exists(processed_file_path):
+            return jsonify({'error': 'Processed file not found'}), 404
+        
+        # Return file for download
+        return send_file(
+            processed_file_path,
+            as_attachment=True,
+            download_name=f"processed_{job['original_filename']}"
+        )
+        
+    except Exception as e:
+        logger.error(f"Download error: {str(e)}")
+        return jsonify({'error': 'Download failed'}), 500
+
+@supabase_bp.route('/profanity/check', methods=['POST'])
+@supabase_auth_required
+def check_text_profanity():
+    """Check text for profanity using regex and AI detection."""
+    try:
+        user = request.current_user
+        data = request.get_json()
+        
+        if not data or 'text' not in data:
+            return jsonify({'error': 'Text content required'}), 400
+        
+        text = data['text']
+        mode = data.get('mode', 'ai')  # 'regex' or 'ai'
+        language = data.get('language', 'en')
+        
+        # Import detection utilities
+        from utils.censor_utils import detect_profane_words
+        
+        # Perform detection based on mode
+        if mode == 'regex':
+            detected_words = detect_profane_words(text)
+            is_abusive = len(detected_words) > 0
+            confidence = 1.0 if is_abusive else 0.0
+        else:
+            # AI-based detection (placeholder for now)
+            detected_words = detect_profane_words(text)
+            is_abusive = len(detected_words) > 0
+            confidence = 0.8 if is_abusive else 0.2
+        
+        return jsonify({
+            'text': text,
+            'is_abusive': is_abusive,
+            'confidence': confidence,
+            'detected_words': detected_words,
+            'language': language,
+            'mode': mode
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Text profanity check error: {str(e)}")
+        return jsonify({'error': 'Profanity check failed'}), 500
 
 # Health Check
 @supabase_bp.route('/health', methods=['GET'])
