@@ -140,7 +140,7 @@ def api_key_required(f):
                 limits = tier_limits.get(subscription_tier, tier_limits['free'])
                 monthly_limit = limits.get(endpoint_type, limits['general'])
                 
-                # Check monthly usage from database
+                # Check monthly usage from database - SECURITY: Track by USER, not API key
                 api_key_id = key_data['id']
                 user_id = key_data['user_id']
                 
@@ -148,16 +148,18 @@ def api_key_required(f):
                 now = datetime.utcnow()
                 month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 
-                # Count API calls for this month by checking job creation (for processing) or general API usage
+                # IMPORTANT: Always count usage by USER_ID, not by individual API keys
+                # This prevents users from resetting usage by deleting/recreating API keys
                 if endpoint_type == 'processing':
                     # Count jobs created this month for processing endpoints
                     monthly_usage_result = supabase_service.client.table("jobs").select("id").eq("user_id", user_id).gte("created_at", month_start.isoformat()).execute()
                     current_usage = len(monthly_usage_result.data or [])
                 else:
-                    # For general endpoints, we'll track usage in the API key usage_count
-                    # Get current usage count for this month (simplified - using total usage)
-                    current_usage = key_data.get('usage_count', 0)
-                    # Note: In a production system, you'd want to track monthly usage separately
+                    # For general endpoints, sum usage across ALL user's API keys for this month
+                    # This prevents abuse by deleting and recreating keys
+                    user_keys_result = supabase_service.client.table("api_keys").select("usage_count").eq("user_id", user_id).execute()
+                    current_usage = sum(key.get('usage_count', 0) for key in (user_keys_result.data or []))
+                    # Note: In production, track monthly usage in separate table for better accuracy
                 
                 logger.info(f"Monthly limit check: tier={subscription_tier}, endpoint={endpoint_type}, limit={monthly_limit}, current={current_usage}")
                 

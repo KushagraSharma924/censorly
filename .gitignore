@@ -126,3 +126,29 @@ backend/models/transformers/
 backend/transformer_test_env/
 **/*_env/
 **/*_venv/
+
+# Security & Sensitive Files
+*.key
+*.pem
+*.p12
+*.pfx
+secret*
+*secret*
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Test files with credentials
+test_*.sh
+*test*.sh
+CURL_EXAMPLES.md
+TEST_RESULTS.md
+*_test.py
+test_*.py
+
+# Environment files
+.env.development
+.env.production
+.env.local
+.env.staging
