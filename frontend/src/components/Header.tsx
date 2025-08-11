@@ -72,44 +72,46 @@ export const Header: React.FC = () => {
         }
       }
 
-      // Fetch fresh user data using the same endpoint as Dashboard for consistency
-      try {
-        const response = await fetch(buildApiUrl('/api/auth/profile'), {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+      // Skip API call if we already have user data - reduce login delay
+      // Only fetch fresh data in background if needed
+      if (!storedUserData) {
+        try {
+          const response = await fetch(buildApiUrl('/api/auth/profile'), {
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
 
-        if (response.ok) {
-          const profileData = await response.json();
-          const userData = profileData.user || profileData;
-          
-          // Format the user data
-          const formattedProfile = formatUserData(userData);
-          if (formattedProfile) {
-            setUser(formattedProfile);
-            // Update localStorage with fresh data for consistency
-            localStorage.setItem('user', JSON.stringify(userData));
+          if (response.ok) {
+            const profileData = await response.json();
+            const userData = profileData.user || profileData;
+            
+            // Format the user data
+            const formattedProfile = formatUserData(userData);
+            if (formattedProfile) {
+              setUser(formattedProfile);
+              // Update localStorage with fresh data for consistency
+              localStorage.setItem('user', JSON.stringify(userData));
+            }
+          } else if (response.status === 401) {
+            // Token is invalid, clear auth
+            console.log('Token expired, clearing auth');
+            setIsAuthenticated(false);
+            setUser(null);
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
           }
-        } else if (response.status === 401) {
-          // Token is invalid, clear auth
-          console.log('Token expired, clearing auth');
-          setIsAuthenticated(false);
-          setUser(null);
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user');
-        }
-      } catch (apiError) {
-        console.log('API call failed, using stored data:', apiError);
-        // If API fails but we have a token, still consider user authenticated
-        // Only if we have no user data at all should we clear auth
-        if (!user && !storedUserData) {
-          console.log('No user data and API failed, clearing auth');
-          setIsAuthenticated(false);
-          setUser(null);
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user');
+        } catch (apiError) {
+          console.log('API call failed, using stored data:', apiError);
+          // If API fails but we have a token, still consider user authenticated
+          if (!user) {
+            console.log('No user data and API failed, clearing auth');
+            setIsAuthenticated(false);
+            setUser(null);
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+          }
         }
       }
 

@@ -102,12 +102,7 @@ class SupabaseService:
             if not check_password_hash(user_data['password_hash'], password):
                 return {"success": False, "error": "Invalid credentials"}
             
-            # Update last login
-            self.client.table("users").update({
-                "last_login": datetime.utcnow().isoformat()
-            }).eq("id", user_data['id']).execute()
-            
-            # Generate JWT tokens
+            # Generate JWT tokens first for faster response
             from flask_jwt_extended import create_access_token, create_refresh_token
             
             access_token = create_access_token(
@@ -119,6 +114,15 @@ class SupabaseService:
             )
             
             refresh_token = create_refresh_token(identity=user_data['id'])
+            
+            # Update last login asynchronously (non-blocking)
+            try:
+                self.client.table("users").update({
+                    "last_login": datetime.utcnow().isoformat()
+                }).eq("id", user_data['id']).execute()
+            except Exception as login_update_error:
+                # Don't fail login if last_login update fails
+                logger.warning(f"Failed to update last_login: {login_update_error}")
             
             return {
                 "success": True,

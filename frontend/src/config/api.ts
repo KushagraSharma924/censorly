@@ -15,7 +15,7 @@ const getApiBaseUrl = (): string => {
 // Main API configuration
 export const API_CONFIG = {
   BASE_URL: getApiBaseUrl(),
-  TIMEOUT: 30000, // 30 seconds
+  TIMEOUT: 15000, // Reduced to 15 seconds for faster response
 } as const;
 
 // API Endpoints

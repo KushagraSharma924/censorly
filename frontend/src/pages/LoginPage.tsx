@@ -42,20 +42,35 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     setError('');
 
+    const startTime = performance.now();
+    console.log('🔐 Login started...');
+
     try {
+      const fetchStart = performance.now();
       const response = await fetch(buildApiUrl(API_ENDPOINTS.AUTH.LOGIN), {
         method: 'POST',
         ...getDefaultFetchOptions(),
         body: JSON.stringify(loginData),
       });
+      const fetchEnd = performance.now();
+      console.log(`📡 Login API call took: ${Math.round(fetchEnd - fetchStart)}ms`);
 
+      const parseStart = performance.now();
       const data = await response.json();
+      const parseEnd = performance.now();
+      console.log(`📄 Response parsing took: ${Math.round(parseEnd - parseStart)}ms`);
 
       if (response.ok) {
+        const storageStart = performance.now();
         // Store token and redirect
         localStorage.setItem('access_token', data.tokens.access_token);
         localStorage.setItem('refresh_token', data.tokens.refresh_token);
         localStorage.setItem('user', JSON.stringify(data.user));
+        const storageEnd = performance.now();
+        console.log(`💾 Storage took: ${Math.round(storageEnd - storageStart)}ms`);
+        
+        const totalTime = performance.now() - startTime;
+        console.log(`✅ Total login time: ${Math.round(totalTime)}ms`);
         
         // Redirect to dashboard
         window.location.href = '/dashboard';
