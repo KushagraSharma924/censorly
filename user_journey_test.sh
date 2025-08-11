@@ -11,7 +11,7 @@ USER_PASSWORD="kush1234"
 USER_NAME="Kushagra Sharma"
 
 # API Configuration
-API_BASE="http://localhost:8080"
+API_BASE="https://ai-profanity-filter.onrender.com"
 
 # Colors for better UX
 GREEN='\033[0;32m'
@@ -137,37 +137,17 @@ else
 fi
 echo ""
 
-# Step 6: User tests text detection
-echo -e "${BLUE}📍 STEP 6: User tries text profanity detection${NC}"
-echo "• User enters sample text to test the service"
+# Step 6: User wants to upload a video for profanity detection
+echo -e "${BLUE}📍 STEP 6: User explores video profanity detection${NC}"
+echo "• User learns this is for VIDEO profanity detection"
+echo "• User sees supported video formats and features"
+echo "• User understands the AI-powered censoring process"
 
-test_texts=(
-    "This is a clean message"
-    "This damn thing is not working"
-    "What the hell is happening here"
-)
-
-for text in "${test_texts[@]}"; do
-    echo "Testing: '$text'"
-    
-    detection_response=$(curl -s -X POST "$API_BASE/api/profanity/check" \
-        -H "Authorization: Bearer $TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{\"text\":\"$text\",\"mode\":\"regex\",\"language\":\"en\"}")
-    
-    if echo "$detection_response" | grep -q '"is_abusive"'; then
-        is_abusive=$(echo "$detection_response" | jq -r '.is_abusive' 2>/dev/null)
-        detected_words=$(echo "$detection_response" | jq -r '.detected_words[]' 2>/dev/null | tr '\n' ' ')
-        
-        if [ "$is_abusive" = "true" ]; then
-            echo -e "   Result: ${RED}🚫 Profanity detected${NC} - Words: [$detected_words]"
-        else
-            echo -e "   Result: ${GREEN}✅ Clean content${NC}"
-        fi
-    else
-        echo "   Response: $detection_response"
-    fi
-done
+echo "💡 Censorly specializes in:"
+echo "   • AI speech-to-text with Whisper"
+echo "   • Profanity detection in spoken audio"
+echo "   • Automatic video censoring (beep/mute)"
+echo "   • Multi-language support"
 echo ""
 
 # Step 7: User wants to upload a video
@@ -266,9 +246,9 @@ echo -e "${GREEN}✅ WORKING FEATURES:${NC}"
 echo "• ✅ Service health check"
 echo "• ✅ User registration"
 echo "• ✅ User authentication (JWT)"
-echo "• ✅ Text profanity detection"
 echo "• ✅ Video upload endpoint structure"
 echo "• ✅ API endpoint accessibility"
+echo "• ✅ Focus on VIDEO profanity detection (not text)"
 
 echo ""
 echo -e "${YELLOW}🔧 FEATURES NEEDING DATABASE:${NC}"
@@ -283,7 +263,7 @@ echo -e "${BLUE}🎯 USER JOURNEY ASSESSMENT:${NC}"
 echo "============================================"
 echo "👤 User: $USER_EMAIL"
 echo "🎫 Authentication: Working"
-echo "🔍 Core Detection: Functional"
+echo "🎬 Video Processing: Ready"
 echo "📱 API Structure: Complete"
 echo "💾 Database Features: Need Supabase setup"
 

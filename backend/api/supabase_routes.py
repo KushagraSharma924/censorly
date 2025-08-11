@@ -1102,48 +1102,6 @@ def download_processed_video(job_id):
         logger.error(f"Download error: {str(e)}")
         return jsonify({'error': 'Download failed'}), 500
 
-@supabase_bp.route('/profanity/check', methods=['POST'])
-@supabase_auth_required
-def check_text_profanity():
-    """Check text for profanity using regex and AI detection."""
-    try:
-        user = request.current_user
-        data = request.get_json()
-        
-        if not data or 'text' not in data:
-            return jsonify({'error': 'Text content required'}), 400
-        
-        text = data['text']
-        mode = data.get('mode', 'ai')  # 'regex' or 'ai'
-        language = data.get('language', 'en')
-        
-        # Import detection utilities
-        from utils.censor_utils import detect_profane_words
-        
-        # Perform detection based on mode
-        if mode == 'regex':
-            detected_words = detect_profane_words(text)
-            is_abusive = len(detected_words) > 0
-            confidence = 1.0 if is_abusive else 0.0
-        else:
-            # AI-based detection (placeholder for now)
-            detected_words = detect_profane_words(text)
-            is_abusive = len(detected_words) > 0
-            confidence = 0.8 if is_abusive else 0.2
-        
-        return jsonify({
-            'text': text,
-            'is_abusive': is_abusive,
-            'confidence': confidence,
-            'detected_words': detected_words,
-            'language': language,
-            'mode': mode
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Text profanity check error: {str(e)}")
-        return jsonify({'error': 'Profanity check failed'}), 500
-
 # Health Check
 @supabase_bp.route('/health', methods=['GET'])
 def health_check():
