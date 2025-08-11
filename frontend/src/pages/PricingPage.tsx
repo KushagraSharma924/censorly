@@ -29,7 +29,7 @@ const PricingPage: React.FC = () => {
     basic: {
       id: 'basic',
       name: 'Basic',
-      price: 999,
+      price: 399,
       currency: '₹',
       billing_cycle: 'monthly',
       popular: true,
@@ -182,7 +182,7 @@ const PricingPage: React.FC = () => {
             <CardHeader className="text-center pt-8">
               <Zap className="h-10 w-10 text-blue-500 mx-auto mb-2" />
               <CardTitle className="text-2xl text-gray-900">Basic</CardTitle>
-              <div className="text-4xl font-bold text-blue-600">₹999</div>
+              <div className="text-4xl font-bold text-blue-600">₹399</div>
               <p className="text-gray-600">per month</p>
               <p className="text-sm text-blue-600 font-medium">⚡ 4x More Powerful Than Free</p>
             </CardHeader>
@@ -266,7 +266,7 @@ const PricingPage: React.FC = () => {
           
           <div className="mt-8 text-center">
             <p className="text-gray-600 mb-4">
-              <strong>Only ₹999/month</strong> - Less than ₹33 per day for 4x the capacity!
+              <strong>Only ₹399/month</strong> - Less than ₹13 per day for 4x the capacity!
             </p>
             <Button 
               size="lg" 
