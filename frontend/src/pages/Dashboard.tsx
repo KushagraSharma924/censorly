@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
 import { dashboardCache } from '@/lib/dashboard-cache';
 import { perfMonitor } from '@/lib/performance-monitor';
+import { optimizedAPI } from '@/lib/optimized-api';
 import { 
   Key, 
   CreditCard, 
@@ -25,7 +26,8 @@ import {
   Copy,
   Trash2,
   Globe,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 // import { apiService, APICapabilities } from '@/lib/api-service';
 import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
@@ -112,6 +114,8 @@ const Dashboard: React.FC = () => {
   const [showApiKeyForm, setShowApiKeyForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStatus, setLoadingStatus] = useState('Initializing...');
 
   useEffect(() => {
     fetchDashboardData();
@@ -132,7 +136,7 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      // Check cache first for faster loading
+      // Check cache first for immediate UI update
       perfMonitor.start('cache-check');
       const cachedProfile = dashboardCache.get<UserProfile>('profile');
       const cachedJobs = dashboardCache.get<Job[]>('jobs');
@@ -146,7 +150,7 @@ const Dashboard: React.FC = () => {
       if (cachedApiKeys) setApiKeys(cachedApiKeys);
       if (cachedUsageStats) setUsageStats(cachedUsageStats);
 
-      // If we have all cached data, show UI immediately and fetch in background
+      // If we have all cached data, show UI immediately
       if (cachedProfile && cachedJobs && cachedApiKeys && cachedUsageStats) {
         setIsLoading(false);
         setIsInitialLoad(false);
@@ -154,26 +158,13 @@ const Dashboard: React.FC = () => {
         console.log('✅ Dashboard loaded from cache');
       }
 
-      // Fetch fresh data
+      // Use optimized API service for fresh data
       perfMonitor.start('api-fetch');
-      const [profileRes, jobsRes, keysRes, usageRes] = await Promise.all([
-        fetch(buildApiUrl(API_ENDPOINTS.USER.PROFILE), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(buildApiUrl(API_ENDPOINTS.VIDEO.JOBS), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(buildApiUrl(API_ENDPOINTS.API_KEYS.LIST), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(buildApiUrl(API_ENDPOINTS.USER.USAGE), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
+      const result = await optimizedAPI.fetchDashboardData(token);
       perfMonitor.end('api-fetch');
 
-      // Check for authentication errors
-      if (profileRes.status === 401 || jobsRes.status === 401 || keysRes.status === 401 || usageRes.status === 401) {
+      // Handle authentication errors
+      if (result.errors.some(error => error.includes('401') || error.includes('Unauthorized'))) {
         console.log('Authentication failed, redirecting to login');
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
@@ -183,50 +174,34 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      if (profileRes.ok) {
-        const profileData = await profileRes.json();
-        const userData = profileData.user || profileData;
-        setProfile(userData);
-        dashboardCache.set('profile', userData);
+      // Update state with fresh data
+      if (result.profile) {
+        setProfile(result.profile);
+        dashboardCache.set('profile', result.profile);
         
         // Update localStorage and notify Header component
-        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('user', JSON.stringify(result.profile));
         window.dispatchEvent(new CustomEvent('userDataUpdated'));
-      } else {
-        console.log('❌ Profile request failed:', profileRes.status);
       }
 
-      if (jobsRes.ok) {
-        const jobsData = await jobsRes.json();
-        const jobsList = jobsData.jobs || [];
-        setJobs(jobsList);
-        dashboardCache.set('jobs', jobsList);
-      } else {
-        console.log('❌ Jobs request failed:', jobsRes.status);
+      if (result.jobs) {
+        setJobs(result.jobs);
+        dashboardCache.set('jobs', result.jobs);
       }
 
-      if (keysRes.ok) {
-        const keysData = await keysRes.json();
-        const keysList = keysData.api_keys || [];
-        setApiKeys(keysList);
-        dashboardCache.set('apiKeys', keysList);
-      } else {
-        console.log('❌ Keys request failed:', keysRes.status);
+      if (result.apiKeys) {
+        setApiKeys(result.apiKeys);
+        dashboardCache.set('apiKeys', result.apiKeys);
       }
 
-      if (usageRes.ok) {
-        const usageData = await usageRes.json();
-        setUsageStats(usageData);
-        dashboardCache.set('usageStats', usageData);
-      } else {
-        console.log('❌ Usage request failed:', usageRes.status);
+      if (result.usage) {
+        setUsageStats(result.usage);
+        dashboardCache.set('usageStats', result.usage);
       }
 
-      // Skip API capabilities for now
-      try {
-        // API capabilities endpoint has different format
-      } catch (error) {
-        console.error('Failed to fetch API capabilities:', error);
+      // Log any errors (but don't fail completely)
+      if (result.errors.length > 0) {
+        console.warn('⚠️ Some requests failed:', result.errors);
       }
 
     } catch (error) {
@@ -235,6 +210,7 @@ const Dashboard: React.FC = () => {
       setIsLoading(false);
       setIsInitialLoad(false);
       setRefreshing(false);
+      perfMonitor.end('dashboard-load');
     }
   };
 
