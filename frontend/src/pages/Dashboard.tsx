@@ -65,40 +65,10 @@ interface APIKey {
 }
 
 interface UsageStats {
-  usage: {
-    processing: {
-      current: number;
-      limit: number;
-      percentage: number;
-    };
-    upload: {
-      current: number;
-      limit: number;
-      percentage: number;
-    };
-    general: {
-      current: number;
-      limit: number;
-      percentage: number;
-    };
-    api_keys: {
-      current: number;
-      limit: number;
-      percentage: number;
-    };
-  };
-  limits: {
-    general: number;
-    processing: number;
-    upload: number;
-    max_api_keys: number;
-  };
-  tier: string;
-  reset_date: string;
-  current_period: {
-    start: string;
-    end: string;
-  };
+  videos_processed_this_month: number;
+  videos_limit: number;
+  subscription_tier: string;
+  days_remaining: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -498,9 +468,9 @@ const Dashboard: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-700">Total Uploads</p>
                   <p className="text-2xl font-bold text-black">
-                    {usageStats?.usage?.upload?.current || 0} / {usageStats?.usage?.upload?.limit || 0}
+                    {usageStats?.videos_processed_this_month || 0} / {usageStats?.videos_limit || 0}
                   </p>
-                  <Progress value={usageStats?.usage?.upload?.percentage || 0} className="mt-2" />
+                  <Progress value={usageStats ? (usageStats.videos_processed_this_month / usageStats.videos_limit) * 100 : 0} className="mt-2" />
                 </div>
                 <FileVideo className="h-8 w-8 text-black" />
               </div>
@@ -511,11 +481,11 @@ const Dashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">API Processing</p>
+                  <p className="text-sm font-medium text-gray-600">Subscription</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {usageStats?.usage?.processing?.current || 0} / {usageStats?.usage?.processing?.limit || 0}
+                    {usageStats?.subscription_tier || 'Free'}
                   </p>
-                  <Progress value={usageStats?.usage?.processing?.percentage || 0} className="mt-2" />
+                  <p className="text-sm text-gray-500 mt-2">{usageStats?.days_remaining || 0} days remaining</p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-gray-400" />
               </div>
@@ -526,11 +496,11 @@ const Dashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">API Keys Used</p>
+                  <p className="text-sm font-medium text-gray-600">API Keys</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {usageStats?.usage?.api_keys?.current || 0} / {usageStats?.usage?.api_keys?.limit || 0}
+                    {apiKeys?.length || 0}
                   </p>
-                  <Progress value={usageStats?.usage?.api_keys?.percentage || 0} className="mt-2" />
+                  <p className="text-sm text-gray-500 mt-2">Total created</p>
                 </div>
                 <Key className="h-8 w-8 text-gray-400" />
               </div>
@@ -549,43 +519,32 @@ const Dashboard: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-600">Total Uploads</span>
+                      <span className="font-medium text-gray-600">Videos Processed</span>
                       <span className="text-gray-900">
-                        {usageStats.usage.upload.current} / {usageStats.usage.upload.limit}
+                        {usageStats.videos_processed_this_month} / {usageStats.videos_limit}
                       </span>
                     </div>
-                    <Progress value={usageStats.usage.upload.percentage} className="h-2" />
+                    <Progress 
+                      value={usageStats ? (usageStats.videos_processed_this_month / usageStats.videos_limit) * 100 : 0} 
+                      className="h-2" 
+                    />
                     <p className="text-xs text-gray-500">
-                      {usageStats.usage.upload.percentage.toFixed(1)}% used
+                      {usageStats ? ((usageStats.videos_processed_this_month / usageStats.videos_limit) * 100).toFixed(1) : 0}% used
                     </p>
                   </div>
                   
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-600">API Processing</span>
+                      <span className="font-medium text-gray-600">Subscription</span>
                       <span className="text-gray-900">
-                        {usageStats.usage.processing.current} / {usageStats.usage.processing.limit}
+                        {usageStats.subscription_tier}
                       </span>
                     </div>
-                    <Progress value={usageStats.usage.processing.percentage} className="h-2" />
-                    <p className="text-xs text-gray-500">
-                      {usageStats.usage.processing.percentage.toFixed(1)}% used
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-600">General API Calls</span>
-                      <span className="text-gray-900">
-                        {usageStats.usage.general.current} / {usageStats.usage.general.limit}
-                      </span>
-                    </div>
-                    <Progress value={usageStats.usage.general.percentage} className="h-2" />
-                    <p className="text-xs text-gray-500">
-                      {usageStats.usage.general.percentage.toFixed(1)}% used
+                    <p className="text-xs text-gray-500 mt-4">
+                      {usageStats.days_remaining} days remaining
                     </p>
                   </div>
                   
@@ -593,12 +552,11 @@ const Dashboard: React.FC = () => {
                     <div className="flex justify-between text-sm">
                       <span className="font-medium text-gray-600">API Keys</span>
                       <span className="text-gray-900">
-                        {usageStats.usage.api_keys.current} / {usageStats.usage.api_keys.limit}
+                        {apiKeys?.length || 0} created
                       </span>
                     </div>
-                    <Progress value={usageStats.usage.api_keys.percentage} className="h-2" />
-                    <p className="text-xs text-gray-500">
-                      {usageStats.usage.api_keys.percentage.toFixed(1)}% used
+                    <p className="text-xs text-gray-500 mt-4">
+                      Total API keys
                     </p>
                   </div>
                 </div>
