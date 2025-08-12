@@ -14,8 +14,14 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Import Supabase service
-from services.supabase_service import supabase_service
+# Import Supabase service with error handling
+try:
+    from services.supabase_service import supabase_service
+    SUPABASE_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Supabase service not available: {e}")
+    supabase_service = None
+    SUPABASE_AVAILABLE = False
 
 # Import route blueprints
 try:
@@ -178,34 +184,35 @@ def create_app():
         @app.route('/health', methods=['GET'])
         def health_check():
             """Health check endpoint."""
-        try:
-            # Test Supabase connection
-            result = supabase_service.client.table("users").select("id").limit(1).execute()
-            
-            return jsonify({
-                'status': 'healthy',
-                'service': 'AI Profanity Filter SaaS',
-                'database': 'supabase_connected',
-                'timestamp': datetime.utcnow().isoformat(),
-                'version': '2.0.0',
-                'features': [
-                    'supabase_native',
-                    'real_time_updates',
-                    'row_level_security',
-                    'api_key_management', 
-                    'subscription_billing',
-                    'multi_language_detection',
-                    'video_processing'
-                ]
-            }), 200
-            
-        except Exception as e:
-            logger.error(f"Health check error: {str(e)}")
-            return jsonify({
-                'status': 'unhealthy',
-                'error': str(e),
-                'timestamp': datetime.utcnow().isoformat()
-            }), 500
+            try:
+                # Test Supabase connection only if available
+                if SUPABASE_AVAILABLE and supabase_service:
+                    result = supabase_service.client.table("users").select("id").limit(1).execute()
+                
+                return jsonify({
+                    'status': 'healthy',
+                    'service': 'AI Profanity Filter SaaS',
+                    'database': 'supabase_connected' if SUPABASE_AVAILABLE else 'supabase_unavailable',
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'version': '2.0.0',
+                    'features': [
+                        'supabase_native' if SUPABASE_AVAILABLE else 'fallback_mode',
+                        'real_time_updates',
+                        'row_level_security',
+                        'api_key_management', 
+                        'subscription_billing',
+                        'multi_language_detection',
+                        'video_processing'
+                    ]
+                }), 200
+                
+            except Exception as e:
+                logger.error(f"Health check error: {str(e)}")
+                return jsonify({
+                    'status': 'unhealthy',
+                    'error': str(e),
+                    'timestamp': datetime.utcnow().isoformat()
+                }), 500
     
     # Global error handlers
     @app.errorhandler(404)
@@ -222,13 +229,16 @@ def create_app():
         return jsonify({'error': 'File too large'}), 413
     
     # Initialize Supabase service
-    try:
-        # Test Supabase connection on startup
-        test_result = supabase_service.client.table("users").select("id").limit(1).execute()
-        logger.info("✅ Supabase service connected successfully")
-    except Exception as e:
-        logger.error(f"❌ Supabase connection failed: {str(e)}")
-        # Don't fail startup - let the app run and show errors in health check
+    if SUPABASE_AVAILABLE and supabase_service:
+        try:
+            # Test Supabase connection on startup
+            test_result = supabase_service.client.table("users").select("id").limit(1).execute()
+            logger.info("✅ Supabase service connected successfully")
+        except Exception as e:
+            logger.error(f"❌ Supabase connection failed: {str(e)}")
+            # Don't fail startup - let the app run and show errors in health check
+    else:
+        logger.warning("⚠️ Supabase service not available - running in fallback mode")
     
     logger.info("🚀 AI Profanity Filter SaaS Platform startup")
     logger.info(f"📍 Server: http://localhost:8080")
