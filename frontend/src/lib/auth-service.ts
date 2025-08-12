@@ -44,27 +44,40 @@ class AuthService {
   private readonly TOKEN_KEY = 'auth_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
 
-  // Token management
+  // Token management - using HttpOnly cookies instead of localStorage
+  // The actual tokens are stored in HttpOnly cookies managed by the server
+  // We only keep track of authentication state client-side
+  
   getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+    // We don't actually access the token directly as it's in httpOnly cookie
+    // Instead we track if user is logged in
+    return localStorage.getItem('is_authenticated') ? 'authenticated' : null;
   }
 
   setToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
+    // We don't store the actual token, just the authentication state
+    localStorage.setItem('is_authenticated', 'true');
   }
 
   getRefreshToken(): string | null {
-    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    // Refresh token is managed by httpOnly cookies
+    return null;
   }
 
   setRefreshToken(token: string): void {
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, token);
+    // No action needed as refresh token is managed by httpOnly cookies
   }
 
   removeTokens(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    // Remove authentication state tracking
+    localStorage.removeItem('is_authenticated');
     localStorage.removeItem('user');
+    
+    // Send request to server to clear the httpOnly cookies
+    fetch(buildApiUrl('/api/auth/logout'), {
+      method: 'POST',
+      credentials: 'include' // Important for cookies
+    }).catch(err => console.error('Error during logout:', err));
   }
 
   // API request helper
@@ -73,13 +86,15 @@ class AuthService {
     options: RequestInit = {}
   ): Promise<T> {
     const url = buildApiUrl(endpoint);
-    const token = this.getToken();
-
+    
+    // Include credentials for cookie-based auth
     const defaultOptions: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
+        // CSRF protection - include a custom header that simple requests can't use
+        'X-Requested-With': 'XMLHttpRequest',
       },
+      credentials: 'include', // Include cookies in the request
     };
 
     const config = {
@@ -89,6 +104,7 @@ class AuthService {
         ...defaultOptions.headers,
         ...options.headers,
       },
+      credentials: 'include', // Ensure this is set even if options overrides other defaultOptions
     };
 
     try {

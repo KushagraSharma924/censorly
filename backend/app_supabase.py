@@ -58,6 +58,17 @@ def create_app():
     # Initialize extensions (no SQLAlchemy)
     jwt = JWTManager(app)
     
+    # Configure session for CSRF
+    app.config['SESSION_TYPE'] = 'filesystem'
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
+    
+    # Initialize Flask-Session
+    from flask_session import Session
+    Session(app)
+    
     # CORS configuration - More permissive for development and production
     cors_origins = [
         "http://localhost:3000", 
@@ -87,12 +98,14 @@ def create_app():
              "Authorization", 
              "X-API-Key",
              "X-Requested-With",
+             "X-CSRF-TOKEN",
+             "X-XSRF-TOKEN",
              "Accept",
              "Origin",
              "Access-Control-Request-Method",
              "Access-Control-Request-Headers"
          ],
-         supports_credentials=False,
+         supports_credentials=True,  # Required for cookies including CSRF
          send_wildcard=False,
          max_age=86400
     )

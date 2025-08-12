@@ -54,10 +54,10 @@ const UploadPage: React.FC = () => {
       console.log('API URL:', buildApiUrl(API_ENDPOINTS.VIDEO.PROCESS));
 
       const formData = new FormData();
-      formData.append('video', fileData.file);
+      formData.append('video_file', fileData.file); // Changed from 'video' to 'video_file'
       
       // Add processing settings using the backend's expected parameters
-      formData.append('censoring_mode', 'beep');  // Backend default
+      formData.append('mode', 'beep');  // Changed from 'censoring_mode' to 'mode'
       formData.append('profanity_threshold', '0.8');  // Backend default (high accuracy)
       formData.append('languages', JSON.stringify(['en']));  // Backend default
       // Note: whisper_model is now automatically determined by subscription tier
@@ -127,6 +127,7 @@ const UploadPage: React.FC = () => {
   const pollJobStatus = async (fileId: string, jobId: string) => {
     try {
       const token = localStorage.getItem('access_token');
+      // This now uses the corrected endpoint with /status
       const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.STATUS(jobId)), {
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -26,7 +26,7 @@ export const useVideoProcessor = () => {
         setProgress(prev => Math.min(prev + 10, 90));
       }, 500);
 
-      const response = await fetch(buildApiUrl('/process'), {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.PROCESS), {
         method: 'POST',
         body: formData,
         // Don't set Content-Type header - let browser set it with boundary for FormData

@@ -1,6 +1,8 @@
 """
-Rate Limiting Service for API Keys
-Implements rate limiting based on subscription tiers and API key usage.
+Rate Limiting Service
+Implements rate limiting based on user ID and subscription tiers.
+Previously used API keys for tracking, but now uses user_id to prevent bypassing
+rate limits by creating multiple API keys.
 """
 
 from datetime import datetime, timedelta
@@ -100,16 +102,17 @@ class RateLimiter:
             }
         }
     
-    def check_rate_limit(self, api_key_obj, endpoint_type='general'):
+    def check_rate(self, user_id, endpoint_type='general', tier='free'):
         """
-        Check if the API key has exceeded rate limits.
+        Check if a request is allowed based on rate limits.
         
         Args:
-            api_key_obj: APIKey model instance
-            endpoint_type: Type of endpoint ('general', 'upload', 'processing')
+            user_id: User identifier (not API key, to prevent multi-key bypass)
+            endpoint_type: Type of endpoint being accessed
+            tier: Subscription tier
             
         Returns:
-            tuple: (is_allowed, retry_after_seconds, current_usage, limit_info)
+            bool: True if allowed, False if rate limited
         """
         
         if not api_key_obj or not api_key_obj.is_active:

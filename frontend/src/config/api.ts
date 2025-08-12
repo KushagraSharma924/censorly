@@ -33,6 +33,9 @@ export const API_ENDPOINTS = {
   USER: {
     PROFILE: '/api/auth/profile',
     UPDATE_PROFILE: '/api/user/profile',
+    UPLOAD_PROFILE_IMAGE: '/api/auth/upload-profile-image',
+    DELETE_PROFILE_IMAGE: '/api/auth/delete-profile-image',
+    CHANGE_PASSWORD: '/api/auth/change-password',
     DELETE_ACCOUNT: '/api/user/delete',
     USAGE: '/api/auth/usage',
   },
@@ -46,11 +49,9 @@ export const API_ENDPOINTS = {
   
   // Video Processing
   VIDEO: {
-    UPLOAD: '/api/video/upload',
     PROCESS: '/api/process-video',
-    STATUS: (jobId: string) => `/api/jobs/${jobId}`,
+    STATUS: (jobId: string) => `/api/jobs/${jobId}/status`,
     DOWNLOAD: (jobId: string) => `/api/download/${jobId}`,
-    LIST: '/api/video/list',
     JOBS: '/api/jobs',
   },
   

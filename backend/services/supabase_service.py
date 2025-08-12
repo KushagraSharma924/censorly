@@ -281,12 +281,12 @@ class SupabaseService:
     
     # API Key Management
     def create_api_key(self, user_id: str, name: str) -> Dict[str, Any]:
-        """Create a new API key."""
+        """Create a new API key using secure utility functions."""
         try:
-            # Generate API key
-            raw_key = f"apf_{secrets.token_urlsafe(32)}"
-            key_prefix = raw_key[:10]
-            key_hash = generate_password_hash(raw_key)
+            from utils.security_utils import generate_secure_api_key
+            
+            # Generate secure API key with our utility function
+            raw_key, key_prefix, key_hash = generate_secure_api_key("apf")
             
             api_key_data = {
                 "id": str(uuid.uuid4()),
@@ -314,13 +314,35 @@ class SupabaseService:
             return {"success": False, "error": str(e)}
     
     def verify_api_key(self, raw_key: str) -> Optional[Dict[str, Any]]:
-        """Verify an API key and return the key data if valid."""
+        """Verify an API key and return the key data if valid using constant-time comparison."""
         try:
-            # Get all active API keys
-            result = self.client.table("api_keys").select("*").eq("is_active", True).execute()
+            # Import the secure verification function
+            from utils.security_utils import verify_api_key as secure_verify_api_key
             
+            # Extract key prefix (first 10 characters) to limit database query
+            if not raw_key or len(raw_key) < 10:
+                logger.warning("Invalid API key format attempted")
+                return None
+                
+            key_prefix = raw_key[:10]
+            
+            # Query only keys with matching prefix for better performance
+            result = self.client.table("api_keys").select("*")\
+                .eq("is_active", True)\
+                .eq("key_prefix", key_prefix)\
+                .execute()
+            
+            # If no keys with this prefix, try a broader search as fallback
+            if not result.data:
+                # Limited fallback query for active keys
+                result = self.client.table("api_keys").select("*")\
+                    .eq("is_active", True)\
+                    .limit(100)\
+                    .execute()
+            
+            # Use constant-time comparison to verify key
             for key_data in result.data or []:
-                if check_password_hash(key_data['key_hash'], raw_key):
+                if secure_verify_api_key(key_data['key_hash'], raw_key):
                     # Update usage count and last used
                     self.client.table("api_keys").update({
                         "usage_count": key_data['usage_count'] + 1,
@@ -329,6 +351,8 @@ class SupabaseService:
                     
                     return key_data
             
+            # Log failed verification attempt (but don't log the key itself)
+            logger.warning(f"API key verification failed for key with prefix {key_prefix[:5]}...")
             return None
         except Exception as e:
             logger.error(f"Verify API key error: {str(e)}")

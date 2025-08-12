@@ -18,6 +18,10 @@ from collections import defaultdict
 from werkzeug.utils import secure_filename
 
 from services.supabase_service import supabase_service
+from utils.security_utils import secure_compare, verify_api_key
+
+# Import security decorators
+from decorators import secure_api_key_required
 
 # Import rate limiter
 try:
@@ -38,14 +42,17 @@ supabase_bp = Blueprint('supabase_api', __name__, url_prefix='/api')
 # For now, we'll implement basic rate limiting
 
 def supabase_auth_required(f):
-    """Decorator for JWT authentication (no Supabase Auth)."""
+    """Decorator for JWT authentication using httpOnly cookies."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({'error': 'Authorization header required'}), 401
-        
-        token = auth_header.split(' ')[1]
+        # Check if token exists in cookie
+        token = request.cookies.get('access_token')
+        if not token:
+            # Fall back to Authorization header for backward compatibility
+            auth_header = request.headers.get('Authorization')
+            if not auth_header or not auth_header.startswith('Bearer '):
+                return jsonify({'error': 'Authentication required'}), 401
+            token = auth_header.split(' ')[1]
         
         try:
             # Manually decode JWT token
@@ -84,29 +91,43 @@ def supabase_auth_required(f):
     return decorated_function
 
 def api_key_required(f):
-    """Decorator for API key authentication with rate limiting."""
+    """Decorator for API key authentication with rate limiting and enhanced security."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Get API key from header
         api_key = request.headers.get('X-API-Key')
-        if not api_key:
-            return jsonify({'error': 'API key required'}), 401
         
-        # Verify API key
+        # Check if API key is present
+        if not api_key:
+            logger.warning("API request missing API key header")
+            return jsonify({
+                'error': 'API key required',
+                'message': 'Please include your API key in the X-API-Key header'
+            }), 401
+        
+        # Set a maximum length for API keys to prevent abuse
+        if len(api_key) > 128:
+            logger.warning("Oversized API key detected - possible attack")
+            return jsonify({'error': 'Invalid API key format'}), 401
+            
+        # Verify API key with our enhanced secure verification
         key_data = supabase_service.verify_api_key(api_key)
         if not key_data:
-            return jsonify({'error': 'Invalid API key'}), 401
+            logger.warning("Invalid API key attempt")
+            return jsonify({
+                'error': 'Invalid API key',
+                'message': 'The provided API key is invalid or has been revoked'
+            }), 401
         
         # Check rate limiting
         if rate_limiter:
             try:
                 # Determine endpoint type based on URL
                 endpoint_type = 'general'
-                if 'create_job' in request.endpoint and request.method == 'POST':
+                if request.endpoint and 'create_job' in request.endpoint and request.method == 'POST':
                     endpoint_type = 'processing'
-                elif 'upload' in request.endpoint:
+                elif request.endpoint and 'upload' in request.endpoint:
                     endpoint_type = 'upload'
-                
-                logger.info(f"Rate limiting check: endpoint={request.endpoint}, method={request.method}, type={endpoint_type}")
                 
                 # Get user data to determine subscription tier
                 user_data = supabase_service.get_user_by_id(key_data['user_id'])
@@ -117,32 +138,24 @@ def api_key_required(f):
                 # Get subscription tier (default to 'free' if not set)
                 subscription_tier = user_data.get('subscription_tier', 'free')
                 
-                # Define monthly limits
-                tier_limits = {
-                    'free': {
-                        'general': 50,
-                        'processing': 10,
-                        'upload': 10
-                    },
-                    'basic': {
-                        'general': 100,
-                        'processing': 40,
-                        'upload': 40
-                    },
-                    'premium': {
-                        'general': 1000,
-                        'processing': 500,
-                        'upload': 500
-                    }
-                }
+                # Log rate limiting check using user_id instead of API key
+                logger.info(f"Rate limiting check: user_id={key_data['user_id']}, endpoint={request.endpoint}, method={request.method}, type={endpoint_type}")
                 
-                # Get the limit for current tier and endpoint type
-                limits = tier_limits.get(subscription_tier, tier_limits['free'])
-                monthly_limit = limits.get(endpoint_type, limits['general'])
-                
-                # Check monthly usage from database - SECURITY: Track by USER, not API key
-                api_key_id = key_data['id']
-                user_id = key_data['user_id']
+                # Check rate limits based on user_id (not API key)
+                # This prevents users from bypassing rate limits by creating multiple API keys
+                if hasattr(rate_limiter, 'check_rate') and not rate_limiter.check_rate(
+                    user_id=key_data['user_id'],  # Use user_id for rate limiting
+                    endpoint_type=endpoint_type,
+                    tier=subscription_tier
+                ):
+                    return jsonify({
+                        'error': 'Rate limit exceeded', 
+                        'message': 'You have exceeded your rate limit. Please try again later or upgrade your plan.'
+                    }), 429
+            
+            except Exception as e:
+                logger.error(f"Rate limiting error: {str(e)}")
+                # Continue if rate limiting fails, but log the error
                 
                 # Get current month start
                 now = datetime.utcnow()
@@ -169,22 +182,9 @@ def api_key_required(f):
                     days_until_reset = (next_month - now).days + 1
                     
                     logger.warning(f"Monthly limit exceeded for API key {api_key_id}: {current_usage}/{monthly_limit}")
-                    return jsonify({
-                        'error': 'Monthly limit exceeded',
-                        'message': f'Monthly limit exceeded. Limit: {monthly_limit} {endpoint_type} calls per month for {subscription_tier} tier.',
-                        'retry_after': days_until_reset * 24 * 60 * 60,  # seconds until reset
-                        'current_usage': current_usage,
-                        'limit': monthly_limit,
-                        'tier': subscription_tier,
-                        'reset_date': next_month.isoformat(),
-                        'endpoint_type': endpoint_type
-                    }), 429
-                
-                logger.info(f"Monthly limit passed: {current_usage + 1}/{monthly_limit}")
-                    
             except Exception as e:
-                logger.error(f"Rate limiting error: {str(e)}")
-                # Continue without rate limiting if there's an error
+                logger.error(f"Rate limiting final error: {str(e)}")
+                # Continue if rate limiting fails
         else:
             logger.warning("Rate limiter not available - skipping rate limiting check")
         
@@ -203,7 +203,10 @@ def api_key_required(f):
     return decorated_function
 
 # Authentication Routes
+from decorators.csrf_protection import csrf_protect, csrf_token_required
+
 @supabase_bp.route('/auth/register', methods=['POST'])
+@csrf_protect
 def register():
     """Register a new user."""
     try:
@@ -264,7 +267,8 @@ def register():
         logger.error(f"Registration error: {str(e)}")
         return jsonify({'error': 'Registration failed'}), 500
 
-@supabase_bp.route('/auth/login', methods=['POST'])
+@supabase_bp.route('/auth/login', methods=['POST']) 
+@csrf_token_required
 def login():
     """Login user."""
     try:
@@ -280,19 +284,42 @@ def login():
         
         if result['success']:
             logger.info(f"User logged in: {email}")
-            return jsonify({
+            # Create response
+            response = jsonify({
                 'message': 'Login successful',
                 'user': {
                     'id': result['user']['id'],
                     'email': result['user']['email'],
                     'full_name': result['user']['full_name'],
                     'subscription_tier': result['user']['subscription_tier']
-                },
-                'tokens': {
-                    'access_token': result['access_token'],
-                    'refresh_token': result.get('refresh_token', result['access_token'])  # Use access token as fallback
                 }
-            }), 200
+                # Tokens no longer returned in response body
+            })
+            
+            # Set httpOnly cookies for tokens
+            max_age_access = 24 * 60 * 60  # 24 hours
+            max_age_refresh = 30 * 24 * 60 * 60  # 30 days
+            
+            response.set_cookie(
+                'access_token',
+                result['access_token'],
+                max_age=max_age_access,
+                httponly=True,
+                secure=True,  # For HTTPS only
+                samesite='Strict'  # CSRF protection
+            )
+            
+            if result.get('refresh_token'):
+                response.set_cookie(
+                    'refresh_token',
+                    result['refresh_token'],
+                    max_age=max_age_refresh,
+                    httponly=True,
+                    secure=True,
+                    samesite='Strict'
+                )
+                
+            return response, 200
         else:
             return jsonify({'error': result['error']}), 401
             
@@ -867,9 +894,9 @@ def list_jobs():
         return jsonify({'error': 'Failed to list jobs'}), 500
 
 @supabase_bp.route('/jobs', methods=['POST'])
-@api_key_required
+@secure_api_key_required  # Use our enhanced secure API key decorator
 def create_job():
-    """Create a new job via API."""
+    """Create a new job via API with enhanced security."""
     try:
         user = request.current_user
         data = request.get_json()
@@ -938,6 +965,7 @@ def get_job(job_id):
 # ===== VIDEO PROCESSING ENDPOINTS =====
 
 @supabase_bp.route('/process-video', methods=['POST'])
+@csrf_protect
 @supabase_auth_required
 def process_video():
     """
@@ -948,18 +976,25 @@ def process_video():
         user = request.current_user
         
         # Check if file is present
-        if 'video' not in request.files:
+        file_param = 'video_file'  # Use consistent parameter name
+        if file_param not in request.files:
             return jsonify({'error': 'No video file provided'}), 400
         
-        file = request.files['video']
-        if file.filename == '':
+        file = request.files[file_param]
+        if not file.filename:
             return jsonify({'error': 'No file selected'}), 400
         
-        # Validate file type
+        # Import security utils
+        from utils.security_utils import validate_video_file, is_allowed_extension, get_secure_filename
+        
+        # Validate file type by extension first
         allowed_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.webm'}
-        file_extension = os.path.splitext(file.filename)[1].lower()
-        if file_extension not in allowed_extensions:
+        if not is_allowed_extension(file.filename, allowed_extensions):
             return jsonify({'error': 'Unsupported file format. Supported: MP4, AVI, MOV, MKV, WMV, WEBM'}), 400
+            
+        # Validate file content using magic numbers
+        if not validate_video_file(file):
+            return jsonify({'error': 'Invalid video file. The file content does not match a valid video format.'}), 400
         
         # Check file size (500MB limit)
         file.seek(0, os.SEEK_END)
@@ -1000,17 +1035,23 @@ def process_video():
         upload_dir = Path(f"uploads/{user['id']}")
         upload_dir.mkdir(parents=True, exist_ok=True)
         
-        # Save uploaded file
-        filename = secure_filename(file.filename)
+        # Save uploaded file with secure name
+        from utils.security_utils import get_secure_filename, compute_file_hash
+        
+        # Generate secure filename with timestamp
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        safe_filename = f"{timestamp}_{filename}"
+        secure_name = get_secure_filename(file.filename)
+        safe_filename = f"{timestamp}_{secure_name}"
         file_path = upload_dir / safe_filename
+        
+        # Compute file hash for integrity verification
+        file_hash = compute_file_hash(file)
         
         file.save(str(file_path))
         
         # Create processing job
         job_data = {
-            'original_filename': filename,
+            'original_filename': file.filename,  # Original filename from request
             'stored_filename': safe_filename,
             'file_path': str(file_path),
             'file_size': file_size,

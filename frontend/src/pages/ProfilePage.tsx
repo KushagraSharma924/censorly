@@ -224,7 +224,7 @@ const ProfilePage: React.FC = () => {
       const formData = new FormData();
       formData.append('profile_image', file);
 
-      const response = await fetch(buildApiUrl('/api/auth/upload-profile-image'), {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.USER.UPLOAD_PROFILE_IMAGE), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -289,7 +289,7 @@ const ProfilePage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(buildApiUrl('/api/auth/delete-profile-image'), {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.USER.DELETE_PROFILE_IMAGE), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -353,7 +353,7 @@ const ProfilePage: React.FC = () => {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(buildApiUrl('/api/auth/change-password'), {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.USER.CHANGE_PASSWORD), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

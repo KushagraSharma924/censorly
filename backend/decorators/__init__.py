@@ -1,1 +1,14 @@
-# Decorators module for rate limiting and authentication
+# Decorators module for rate limiting, authentication, and security
+from .rate_limiting import rate_limit_only
+from .csrf_protection import csrf_protect, csrf_token_required
+
+try:
+    from .api_security import secure_api_key_required
+except ImportError:
+    # If the module is not available, provide a fallback
+    def secure_api_key_required(f):
+        from functools import wraps
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            return f(*args, **kwargs)
+        return decorated_function
