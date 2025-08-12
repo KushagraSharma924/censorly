@@ -32,8 +32,14 @@ RUN mkdir -p uploads processed logs
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:$PORT/health || exit 1
 
+# Install curl for healthcheck (already done earlier, but making sure)
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Expose port (Render uses 10000 by default)
 EXPOSE $PORT
 
-# Start the application
+# Make sure startup script is executable
+RUN chmod +x start.sh
+
+# Start the application in debug mode for Render deployment troubleshooting
 CMD ["sh", "start.sh"]

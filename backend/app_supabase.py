@@ -24,6 +24,13 @@ except ImportError:
     print("Warning: supabase_routes blueprint not available")
     supabase_bp = None
 
+# Import health check routes (always available, no dependencies)
+try:
+    from api.health import health_bp
+except ImportError:
+    print("Warning: health_bp blueprint not available")
+    health_bp = None
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -146,26 +153,31 @@ def create_app():
         app.register_blueprint(supabase_bp)
         logger.info("Supabase routes blueprint registered")
     
-    # Root endpoint
-    @app.route('/', methods=['GET'])
-    def root():
-        """Root endpoint."""
-        return jsonify({
-            'service': 'AI Profanity Filter SaaS Backend',
-            'status': 'running',
-            'version': '1.0.0',
-            'endpoints': {
-                'health': '/health',
-                'auth': '/api/auth/*',
-                'profile': '/api/profile/*',
-                'video': '/api/video/*'
-            }
-        })
-
-    # Health check endpoint
-    @app.route('/health', methods=['GET'])
-    def health_check():
-        """Health check endpoint."""
+    # Register health check blueprint (high priority for render deployment)
+    if health_bp:
+        app.register_blueprint(health_bp)
+        logger.info("Health check blueprint registered")
+    else:
+        # Root endpoint fallback if health_bp not available
+        @app.route('/', methods=['GET'])
+        def root():
+            """Root endpoint."""
+            return jsonify({
+                'service': 'AI Profanity Filter SaaS Backend',
+                'status': 'running',
+                'version': '1.0.0',
+                'endpoints': {
+                    'health': '/health',
+                    'auth': '/api/auth/*',
+                    'profile': '/api/profile/*',
+                    'video': '/api/video/*'
+                }
+            })
+        
+        # Health check endpoint fallback if health_bp not available
+        @app.route('/health', methods=['GET'])
+        def health_check():
+            """Health check endpoint."""
         try:
             # Test Supabase connection
             result = supabase_service.client.table("users").select("id").limit(1).execute()
