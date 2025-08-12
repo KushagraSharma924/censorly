@@ -250,38 +250,9 @@ curl -X POST http://localhost:8080/api/v2/detect-text \
 ## 🚀 Deployment
 
 ### Docker Deployment
-
-Use Docker to run the application:
-
 ```bash
-# Build and run the main application
-docker build -t censorly-backend ./backend
-docker run -p 5000:5000 censorly-backend
-
-# Build and run the debug version (lightweight for troubleshooting)
-docker build -t censorly-debug -f ./backend/Dockerfile.debug ./backend
-docker run -p 8000:8000 censorly-debug
-
-# Or use Docker Compose to run both
-docker-compose up
-```
-
-### Render Deployment
-
-Deploy to Render using the provided helper script:
-
-```bash
-# Set your Render API key
-export RENDER_API_KEY=your_render_api_key
-
-# Run the deployment script
-./deploy-render.sh
-```
-
-Or manually deploy using the Render CLI:
-
-```bash
-render deploy --file render.yaml
+# Build and run with Docker Compose
+docker-compose up -d
 ```
 
 ### Manual Deployment
@@ -295,7 +266,6 @@ render deploy --file render.yaml
 - **Development**: Debug enabled, hot reload
 - **Staging**: Production-like with test data
 - **Production**: Optimized, secure, monitored
-- **Debug**: Lightweight version for troubleshooting deployment issues
 
 ## 📊 Monitoring & Analytics
 
@@ -316,7 +286,7 @@ render deploy --file render.yaml
 
 ### Authentication & Authorization
 - JWT-based stateless authentication
-- Secure API key management with timing attack protection
+- API key management for programmatic access
 - Role-based access control (RBAC)
 - Rate limiting and request throttling
 
@@ -324,14 +294,8 @@ render deploy --file render.yaml
 - Input validation and sanitization
 - SQL injection prevention
 - XSS protection
-- Enhanced CORS configuration for cross-origin security
+- CORS configuration
 - Secure file upload handling
-
-### API Security Enhancements
-- Constant-time comparison for API key validation
-- Secure hashing using HMAC-SHA256
-- API key rotation capabilities
-- Rate limiting to prevent brute force attacks
 
 ## 🤝 Contributing
 
