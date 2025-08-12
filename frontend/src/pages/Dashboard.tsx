@@ -7,9 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/Header';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
-import { dashboardCache } from '@/lib/dashboard-cache';
-import { perfMonitor } from '@/lib/performance-monitor';
-import { optimizedAPI } from '@/lib/optimized-api';
+import { API_CONFIG } from '@/config/api';
 import { 
   Key, 
   CreditCard, 
@@ -97,8 +95,6 @@ const Dashboard: React.FC = () => {
     }
 
     try {
-      perfMonitor.start('dashboard-load');
-      
       const token = localStorage.getItem('access_token');
       if (!token) {
         console.log('❌ No token found, redirecting to login');
@@ -106,78 +102,62 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      // Check cache first for immediate UI update
-      perfMonitor.start('cache-check');
-      const cachedProfile = dashboardCache.get<UserProfile>('profile');
-      const cachedJobs = dashboardCache.get<Job[]>('jobs');
-      const cachedApiKeys = dashboardCache.get<APIKey[]>('apiKeys');
-      const cachedUsageStats = dashboardCache.get<UsageStats>('usageStats');
-      perfMonitor.end('cache-check');
+      // Fetch all data in parallel
+      const [profileRes, jobsRes, keysRes, usageRes] = await Promise.allSettled([
+        fetch(`${API_CONFIG.BASE_URL}/api/auth/profile`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_CONFIG.BASE_URL}/api/jobs`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_CONFIG.BASE_URL}/api/auth/usage`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
 
-      // Set cached data immediately for faster UI
-      if (cachedProfile) setProfile(cachedProfile);
-      if (cachedJobs) setJobs(cachedJobs);
-      if (cachedApiKeys) setApiKeys(cachedApiKeys);
-      if (cachedUsageStats) setUsageStats(cachedUsageStats);
-
-      // If we have all cached data, show UI immediately
-      if (cachedProfile && cachedJobs && cachedApiKeys && cachedUsageStats) {
-        setIsLoading(false);
-        setIsInitialLoad(false);
-        perfMonitor.end('dashboard-load');
-        console.log('✅ Dashboard loaded from cache');
+      // Handle profile data
+      if (profileRes.status === 'fulfilled' && profileRes.value.ok) {
+        const profileData = await profileRes.value.json();
+        if (profileData.user) {
+          setProfile(profileData.user);
+          localStorage.setItem('user', JSON.stringify(profileData.user));
+          window.dispatchEvent(new CustomEvent('userDataUpdated'));
+        }
       }
 
-      // Use optimized API service for fresh data
-      perfMonitor.start('api-fetch');
-      const result = await optimizedAPI.fetchDashboardData(token);
-      perfMonitor.end('api-fetch');
-
-      // Handle authentication errors
-      if (result.errors.some(error => error.includes('401') || error.includes('Unauthorized'))) {
-        console.log('Authentication failed, redirecting to login');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        dashboardCache.invalidateAll();
-        window.location.href = '/login';
-        return;
+      // Handle jobs data
+      if (jobsRes.status === 'fulfilled' && jobsRes.value.ok) {
+        const jobsData = await jobsRes.value.json();
+        if (jobsData.jobs) {
+          setJobs(jobsData.jobs);
+        }
       }
 
-      // Update state with fresh data
-      if (result.profile) {
-        setProfile(result.profile);
-        dashboardCache.set('profile', result.profile);
-        
-        // Update localStorage and notify Header component
-        localStorage.setItem('user', JSON.stringify(result.profile));
-        window.dispatchEvent(new CustomEvent('userDataUpdated'));
+      // Handle API keys data
+      if (keysRes.status === 'fulfilled' && keysRes.value.ok) {
+        const keysData = await keysRes.value.json();
+        if (keysData.keys) {
+          setApiKeys(keysData.keys);
+        }
       }
 
-      if (result.jobs) {
-        setJobs(result.jobs);
-        dashboardCache.set('jobs', result.jobs);
-      }
-
-      if (result.apiKeys) {
-        setApiKeys(result.apiKeys);
-        dashboardCache.set('apiKeys', result.apiKeys);
-      }
-
-      if (result.usage) {
-        setUsageStats(result.usage);
-        dashboardCache.set('usageStats', result.usage);
-      }
-
-      // Log any errors (but don't fail completely)
-      if (result.errors.length > 0) {
-        console.warn('⚠️ Some requests failed:', result.errors);
+      // Handle usage data
+      if (usageRes.status === 'fulfilled' && usageRes.value.ok) {
+        const usageData = await usageRes.value.json();
+        setUsageStats(usageData); // API returns usage data directly
       }
 
     } catch (error) {
       console.error('❌ Failed to fetch dashboard data:', error);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
+      setIsInitialLoad(false);
+    }
+  };
       setIsInitialLoad(false);
       setRefreshing(false);
       perfMonitor.end('dashboard-load');
