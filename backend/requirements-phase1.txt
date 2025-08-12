@@ -6,6 +6,7 @@ gunicorn==21.2.0
 
 # SaaS Authentication (using Supabase Auth instead of JWT)
 flask-jwt-extended==4.6.0
+flask-session==0.5.0
 bcrypt==4.0.1
 python-dotenv==1.0.0
 
