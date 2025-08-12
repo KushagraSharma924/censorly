@@ -3,7 +3,8 @@ Simplified Flask app for Render deployment debugging
 This version has minimal dependencies and will start up quickly
 """
 
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request, make_response
+from flask_cors import CORS
 import os
 import platform
 import logging
@@ -20,6 +21,68 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__)
+
+# Configure CORS for debug app
+cors_origins = [
+    "http://localhost:3000", 
+    "http://localhost:5173", 
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
+    "https://profanityfilter.ai",
+    "https://ai-profanity-filter.vercel.app",
+    "https://censorly.vercel.app",
+    "https://*.vercel.app"  # Allow all Vercel apps
+]
+
+# Add Render domain if deployed
+render_url = os.getenv('RENDER_EXTERNAL_URL')
+if render_url:
+    cors_origins.append(render_url)
+    cors_origins.append(render_url.replace('http:', 'https:'))  # Both HTTP and HTTPS
+
+# Apply CORS configuration
+CORS(app, 
+     origins=cors_origins,
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+     allow_headers=[
+         "Content-Type", 
+         "Authorization", 
+         "X-API-Key",
+         "X-Requested-With",
+         "X-CSRF-TOKEN",
+         "Accept",
+         "Origin"
+     ],
+     supports_credentials=True,
+     send_wildcard=False,
+     max_age=86400
+)
+
+# Handle OPTIONS requests (preflight)
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        # Get the origin from request headers
+        origin = request.headers.get('Origin')
+        
+        # Create a response with appropriate CORS headers
+        response = make_response()
+        
+        # Check if origin is in allowed origins list
+        if origin and any(origin.startswith(allowed) for allowed in cors_origins):
+            response.headers.add("Access-Control-Allow-Origin", origin)
+            response.headers.add("Access-Control-Allow-Credentials", "true")
+        else:
+            # Fallback for development
+            response.headers.add("Access-Control-Allow-Origin", origin if origin else "*")
+            
+        response.headers.add('Access-Control-Allow-Headers', 
+                          "Content-Type,Authorization,X-API-Key,X-Requested-With,Accept,Origin,X-CSRF-TOKEN")
+        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS,PATCH")
+        response.headers.add('Access-Control-Max-Age', '86400')
+        return response
 
 # Simple HTML template for root path
 ROOT_TEMPLATE = """

@@ -121,10 +121,22 @@ def create_app():
     @app.before_request
     def handle_preflight():
         if request.method == "OPTIONS":
+            # Get the origin from request headers
+            origin = request.headers.get('Origin')
+            
             # Create a response with appropriate CORS headers
             response = make_response()
-            response.headers.add("Access-Control-Allow-Origin", "*")
-            response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-API-Key,X-Requested-With,Accept,Origin")
+            
+            # Check if origin is in allowed origins list instead of using wildcard
+            if origin and any(origin.startswith(allowed) for allowed in cors_origins):
+                response.headers.add("Access-Control-Allow-Origin", origin)
+                response.headers.add("Access-Control-Allow-Credentials", "true")
+            else:
+                # Fallback for development
+                response.headers.add("Access-Control-Allow-Origin", origin if origin else "*")
+                
+            response.headers.add('Access-Control-Allow-Headers', 
+                                "Content-Type,Authorization,X-API-Key,X-Requested-With,Accept,Origin,X-CSRF-TOKEN")
             response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS,PATCH")
             response.headers.add('Access-Control-Max-Age', '86400')
             return response
