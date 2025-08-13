@@ -698,7 +698,7 @@ const HomePage: React.FC = () => {
             </div>
             <div className="bg-gray-800 rounded-lg p-6 overflow-x-auto">
               <pre className="text-sm text-green-400">
-{`curl -X POST "https://api.profanityfilter.com/v1/videos" \\
+{`curl -X POST "https://ai-profanity-filter.onrender.com/api/videos/upload" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: multipart/form-data" \\
   -F "video=@your-video.mp4" \\

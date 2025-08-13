@@ -141,3 +141,8 @@ export const debugLog = (message: string, data?: any): void => {
     console.log(`[API Debug] ${message}`, data);
   }
 };
+
+// Documentation URL helper - always uses production URL for consistency in docs
+export const getDocumentationApiUrl = (): string => {
+  return 'https://ai-profanity-filter.onrender.com';
+};

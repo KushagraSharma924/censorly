@@ -214,7 +214,7 @@ const Docs: React.FC = () => {
                 </p>
                 <div className="bg-gray-900 text-white p-4 rounded-lg font-mono text-sm overflow-x-auto">
                   <div className="text-green-400 mb-2"># Analyze text content</div>
-                  <div>curl -X POST https://api.censorly.com/v1/detect \\</div>
+                  <div>curl -X POST https://ai-profanity-filter.onrender.com/api/videos/upload \\</div>
                   <div className="ml-4">-H "Authorization: Bearer YOUR_JWT_TOKEN" \\</div>
                   <div className="ml-4">-H "Content-Type: application/json" \\</div>
                   <div className="ml-4">-d {`'{`}</div>
@@ -290,7 +290,7 @@ const Docs: React.FC = () => {
                     <h4 className="font-semibold mb-2">JavaScript Example</h4>
                     <div className="bg-gray-900 text-white p-4 rounded-lg font-mono text-sm">
                       <div className="text-green-400 mb-2">// Using fetch API</div>
-                      <div>const response = await fetch('https://api.censorly.com/v1/detect', {'{'}</div>
+                      <div>const response = await fetch('https://ai-profanity-filter.onrender.com/api/videos/upload', {'{'}</div>
                       <div className="ml-4">method: 'POST',</div>
                       <div className="ml-4">headers: {'{'}</div>
                       <div className="ml-8 text-yellow-300">'Authorization': `Bearer ${'{YOUR_JWT_TOKEN}'}`,</div>
@@ -1549,7 +1549,7 @@ const Docs: React.FC = () => {
                 <h3 className="text-xl font-semibold mb-4">Current Alternative: Direct API Calls</h3>
                 <div className="bg-gray-900 text-white p-4 rounded-lg font-mono text-sm">
                   <div>// Current approach using fetch API</div>
-                  <div>const response = await fetch('https://api.censorly.com/v1/detect', {`{`}</div>
+                  <div>const response = await fetch('https://ai-profanity-filter.onrender.com/api/videos/upload', {`{`}</div>
                   <div className="ml-4">method: 'POST',</div>
                   <div className="ml-4">headers: {`{`}</div>
                   <div className="ml-8">'Authorization': `Bearer ${`{token}`}`,</div>
