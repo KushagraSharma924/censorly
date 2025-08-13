@@ -72,12 +72,6 @@ class AuthService {
     // Remove authentication state tracking
     localStorage.removeItem('is_authenticated');
     localStorage.removeItem('user');
-    
-    // Send request to server to clear the httpOnly cookies
-    fetch(buildApiUrl('/api/auth/logout'), {
-      method: 'POST',
-      credentials: 'include' // Important for cookies
-    }).catch(err => console.error('Error during logout:', err));
   }
 
   // API request helper
@@ -94,7 +88,7 @@ class AuthService {
         // CSRF protection - include a custom header that simple requests can't use
         'X-Requested-With': 'XMLHttpRequest',
       },
-      credentials: 'include', // Include cookies in the request
+      credentials: 'include' as RequestCredentials, // Include cookies in the request
     };
 
     const config = {
@@ -104,7 +98,7 @@ class AuthService {
         ...defaultOptions.headers,
         ...options.headers,
       },
-      credentials: 'include', // Ensure this is set even if options overrides other defaultOptions
+      credentials: 'include' as RequestCredentials, // Ensure this is set even if options overrides other defaultOptions
     };
 
     try {
@@ -136,15 +130,10 @@ class AuthService {
       }
     );
 
-    // Store tokens
-    if (response.access_token) {
-      this.setToken(response.access_token);
-    }
-    if (response.refresh_token) {
-      this.setRefreshToken(response.refresh_token);
-    }
+    // Backend uses httpOnly cookies, so we just track authentication state
+    this.setToken('authenticated');
 
-    // Store user data including profile information
+    // Store user data
     if (response.user) {
       localStorage.setItem('user', JSON.stringify(response.user));
     }
@@ -157,16 +146,18 @@ class AuthService {
       API_ENDPOINTS.AUTH.REGISTER,
       {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          full_name: data.name, // Backend expects full_name
+        }),
       }
     );
 
-    // Store tokens
-    if (response.access_token) {
-      this.setToken(response.access_token);
-    }
-    if (response.refresh_token) {
-      this.setRefreshToken(response.refresh_token);
+    // Backend uses httpOnly cookies, so we just track authentication state
+    if (response.user) {
+      this.setToken('authenticated');
+      localStorage.setItem('user', JSON.stringify(response.user));
     }
 
     return response;
@@ -174,7 +165,7 @@ class AuthService {
 
   async logout(): Promise<void> {
     try {
-      // Attempt to logout on server
+      // Call server logout to clear httpOnly cookies
       await this.makeRequest(API_ENDPOINTS.AUTH.LOGOUT, {
         method: 'POST',
       });
@@ -188,20 +179,24 @@ class AuthService {
   }
 
   async getProfile(): Promise<User> {
-    const profile = await this.makeRequest<User>(API_ENDPOINTS.USER.PROFILE);
+    const response = await this.makeRequest<{ user: User }>(API_ENDPOINTS.USER.PROFILE);
     
     // Update stored user data with fresh profile information
-    if (profile) {
-      localStorage.setItem('user', JSON.stringify(profile));
+    if (response.user) {
+      localStorage.setItem('user', JSON.stringify(response.user));
+      return response.user;
     }
     
-    return profile;
+    throw new Error('No user data received');
   }
 
   async verifyToken(): Promise<{ valid: boolean; user?: User }> {
     try {
       const response = await this.makeRequest<{ valid: boolean; user: User }>(
-        API_ENDPOINTS.AUTH.VERIFY_TOKEN
+        API_ENDPOINTS.AUTH.VERIFY_TOKEN,
+        {
+          method: 'POST',
+        }
       );
       return response;
     } catch (error) {
@@ -210,25 +205,18 @@ class AuthService {
   }
 
   async refreshToken(): Promise<AuthResponse> {
-    const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
+    // Backend handles refresh automatically via httpOnly cookies
+    // We can call the refresh endpoint if needed
     const response = await this.makeRequest<AuthResponse>(
       API_ENDPOINTS.AUTH.REFRESH,
       {
         method: 'POST',
-        body: JSON.stringify({ refresh_token: refreshToken }),
       }
     );
 
-    // Update stored tokens
-    if (response.access_token) {
-      this.setToken(response.access_token);
-    }
-    if (response.refresh_token) {
-      this.setRefreshToken(response.refresh_token);
+    // Update stored user data if provided
+    if (response.user) {
+      localStorage.setItem('user', JSON.stringify(response.user));
     }
 
     return response;

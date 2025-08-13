@@ -7,7 +7,10 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/Header';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
-import { API_CONFIG } from '@/config/api';
+import { optimizedAPI } from '@/lib/optimized-api';
+import { API_CONFIG, buildApiUrl } from '@/config/api';
+import { apiService } from '@/lib/api-service';
+import { dashboardService } from '@/lib/dashboard-service';
 import { 
   Key, 
   CreditCard, 
@@ -90,59 +93,43 @@ export const Dashboard: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        console.log('❌ No token found, redirecting to login');
+      // Check if user is authenticated
+      const isAuthenticated = localStorage.getItem('is_authenticated');
+      if (!isAuthenticated) {
+        console.log('❌ Not authenticated, redirecting to login');
         window.location.href = '/login';
         return;
       }
 
-      // Fetch all data in parallel
-      const [profileRes, jobsRes, keysRes, usageRes] = await Promise.allSettled([
-        fetch(`${API_CONFIG.BASE_URL}/api/auth/profile`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_CONFIG.BASE_URL}/api/jobs`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_CONFIG.BASE_URL}/api/auth/usage`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
+      // Fetch all data using the dashboard service
+      const { profile: profileData, jobs: jobsData, apiKeys: keysData, usage: usageData, errors } = 
+        await dashboardService.fetchAllData();
 
       // Handle profile data
-      if (profileRes.status === 'fulfilled' && profileRes.value.ok) {
-        const profileData = await profileRes.value.json();
-        if (profileData.user) {
-          setProfile(profileData.user);
-          localStorage.setItem('user', JSON.stringify(profileData.user));
-          window.dispatchEvent(new CustomEvent('userDataUpdated'));
-        }
+      if (profileData) {
+        setProfile(profileData);
+        localStorage.setItem('user', JSON.stringify(profileData));
+        window.dispatchEvent(new CustomEvent('userDataUpdated'));
       }
 
       // Handle jobs data
-      if (jobsRes.status === 'fulfilled' && jobsRes.value.ok) {
-        const jobsData = await jobsRes.value.json();
-        if (jobsData.jobs) {
-          setJobs(jobsData.jobs);
-        }
+      if (jobsData) {
+        setJobs(jobsData);
       }
 
       // Handle API keys data
-      if (keysRes.status === 'fulfilled' && keysRes.value.ok) {
-        const keysData = await keysRes.value.json();
-        if (keysData.keys) {
-          setApiKeys(keysData.keys);
-        }
+      if (keysData) {
+        setApiKeys(keysData);
       }
 
       // Handle usage data
-      if (usageRes.status === 'fulfilled' && usageRes.value.ok) {
-        const usageData = await usageRes.value.json();
+      if (usageData) {
         setUsageStats(usageData);
+      }
+
+      // Log any errors
+      if (errors.length > 0) {
+        console.warn('Dashboard fetch errors:', errors);
       }
 
     } catch (error) {
@@ -160,37 +147,15 @@ export const Dashboard: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name: newApiKeyName.trim() })
-      });
+      const { key, keyInfo } = await dashboardService.createApiKey(newApiKeyName.trim());
+      setNewApiKey(key);
+      setShowNewApiKey(true);
+      setShowApiKeyForm(false);
+      setNewApiKeyName('');
 
-      if (response.ok) {
-        const data = await response.json();
-        setNewApiKey(data.key?.key || data.api_key || 'Key created successfully');
-        setShowNewApiKey(true);
-        setShowApiKeyForm(false);
-        setNewApiKeyName('');
-
-        // Refresh API keys list
-        const keysResponse = await fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (keysResponse.ok) {
-          const keysData = await keysResponse.json();
-          if (keysData.keys) {
-            setApiKeys(keysData.keys);
-          }
-        }
-      } else {
-        console.error('Failed to create API key');
-      }
+      // Refresh API keys list
+      const keysData = await dashboardService.refreshApiKeys();
+      setApiKeys(keysData);
     } catch (error) {
       console.error('Error creating API key:', error);
     }
@@ -198,25 +163,11 @@ export const Dashboard: React.FC = () => {
 
   const deleteApiKey = async (keyId: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/keys/${keyId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        // Refresh API keys list
-        const keysResponse = await fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (keysResponse.ok) {
-          const keysData = await keysResponse.json();
-          if (keysData.keys) {
-            setApiKeys(keysData.keys);
-          }
-        }
-      }
+      await dashboardService.deleteApiKey(keyId);
+      
+      // Refresh API keys list
+      const keysData = await dashboardService.refreshApiKeys();
+      setApiKeys(keysData);
     } catch (error) {
       console.error('Error deleting API key:', error);
     }

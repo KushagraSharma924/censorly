@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react';
-import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
+import { useAuth } from '@/contexts/auth-context';
 
 interface LoginFormData {
   email: string;
@@ -25,6 +25,8 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
+  const { login, register } = useAuth();
+  
   const [loginData, setLoginData] = useState<LoginFormData>({
     email: '',
     password: ''
@@ -42,44 +44,12 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     setError('');
 
-    const startTime = performance.now();
-    console.log('🔐 Login started...');
-
     try {
-      const fetchStart = performance.now();
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.AUTH.LOGIN), {
-        method: 'POST',
-        ...getDefaultFetchOptions(),
-        body: JSON.stringify(loginData),
-      });
-      const fetchEnd = performance.now();
-      console.log(`📡 Login API call took: ${Math.round(fetchEnd - fetchStart)}ms`);
-
-      const parseStart = performance.now();
-      const data = await response.json();
-      const parseEnd = performance.now();
-      console.log(`📄 Response parsing took: ${Math.round(parseEnd - parseStart)}ms`);
-
-      if (response.ok) {
-        const storageStart = performance.now();
-        // Store token and redirect
-        localStorage.setItem('access_token', data.tokens.access_token);
-        localStorage.setItem('refresh_token', data.tokens.refresh_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        const storageEnd = performance.now();
-        console.log(`💾 Storage took: ${Math.round(storageEnd - storageStart)}ms`);
-        
-        const totalTime = performance.now() - startTime;
-        console.log(`✅ Total login time: ${Math.round(totalTime)}ms`);
-        
-        // Redirect to dashboard
-        window.location.href = '/dashboard';
-      } else {
-        setError(data.error || 'Login failed. Please try again.');
-      }
+      await login(loginData.email, loginData.password);
+      // Redirect will be handled by the auth context or other logic
+      window.location.href = '/dashboard';
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Network error. Please check your connection and try again.');
+      setError(error instanceof Error ? error.message : 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -105,32 +75,11 @@ const LoginPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.AUTH.REGISTER), {
-        method: 'POST',
-        ...getDefaultFetchOptions(),
-        body: JSON.stringify({
-          name: registerData.name,
-          email: registerData.email,
-          password: registerData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Store token and redirect
-        localStorage.setItem('access_token', data.tokens.access_token);
-        localStorage.setItem('refresh_token', data.tokens.refresh_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Redirect to dashboard
-        window.location.href = '/dashboard';
-      } else {
-        setError(data.error || 'Registration failed. Please try again.');
-      }
+      await register(registerData.email, registerData.password, registerData.name);
+      // Redirect will be handled by the auth context or other logic
+      window.location.href = '/dashboard';
     } catch (error) {
-      console.error('Registration error:', error);
-      setError('Network error. Please check your connection and try again.');
+      setError(error instanceof Error ? error.message : 'Registration failed');
     } finally {
       setLoading(false);
     }

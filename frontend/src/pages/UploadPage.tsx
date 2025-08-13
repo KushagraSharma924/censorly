@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Zap
 } from 'lucide-react';
-import { API_ENDPOINTS, buildApiUrl, getDefaultFetchOptions } from '@/config/api';
+import { VideoProcessor } from '@/lib/video-processor';
+import { useAuth } from '@/contexts/auth-context';
 
 interface UploadedFile extends FileStatusItem {}
 
@@ -23,31 +24,38 @@ const UploadPage: React.FC = () => {
   const [dragActive, setDragActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isAuthenticated } = useAuth();
 
   const handleFiles = (fileList: FileList) => {
+    if (!isAuthenticated) {
+      alert('Please log in to upload files');
+      return;
+    }
+
     setIsUploading(true);
     
-    const newFiles: UploadedFile[] = Array.from(fileList).map(file => ({
-      file,
-      id: Math.random().toString(36).substr(2, 9),
-      progress: 0,
-      status: 'uploading',
-      estimatedTime: Math.floor(file.size / (1024 * 1024)) * 30 // Rough estimate: 30 seconds per MB
-    }));
+    const newFiles: UploadedFile[] = Array.from(fileList).map(file => {
+      // Validate file
+      const validation = VideoProcessor.validateVideoFile(file);
+      
+      return {
+        file,
+        id: Math.random().toString(36).substr(2, 9),
+        progress: 0,
+        status: validation.valid ? 'uploading' : 'failed',
+        error: validation.error,
+        estimatedTime: validation.valid ? VideoProcessor.getProcessingTimeEstimate(file.size) : undefined
+      };
+    });
 
     setFiles(prev => [...prev, ...newFiles]);
 
-    // Start uploading each file
-    newFiles.forEach(uploadFile);
+    // Start uploading each valid file
+    newFiles.filter(f => f.status === 'uploading').forEach(uploadFile);
   };
 
   const uploadFile = async (fileData: UploadedFile) => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        updateFileStatus(fileData.id, 'failed', 'Not authenticated - please login first');
-        return;
-      }
 
       console.log('Starting upload for:', fileData.file.name);
       console.log('Token exists:', !!token);

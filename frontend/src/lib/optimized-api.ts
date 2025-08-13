@@ -144,7 +144,7 @@ class OptimizedAPIService {
   /**
    * Fetch dashboard data with optimization
    */
-  async fetchDashboardData(token: string): Promise<{
+  async fetchDashboardData(): Promise<{
     profile?: any;
     jobs?: any;
     apiKeys?: any;
@@ -155,8 +155,8 @@ class OptimizedAPIService {
     const results: any = {};
 
     const authHeaders = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest', // CSRF protection
     };
 
     // Use Promise.allSettled for parallel requests that don't fail if one fails
@@ -165,6 +165,7 @@ class OptimizedAPIService {
         key: 'profile', 
         promise: this.fetchWithRetry(buildApiUrl(API_ENDPOINTS.USER.PROFILE), {
           headers: authHeaders,
+          credentials: 'include' as RequestCredentials,
           timeout: 8000, // Shorter timeout for profile
         })
       },
@@ -172,6 +173,7 @@ class OptimizedAPIService {
         key: 'jobs', 
         promise: this.fetchWithRetry(buildApiUrl(API_ENDPOINTS.VIDEO.JOBS), {
           headers: authHeaders,
+          credentials: 'include' as RequestCredentials,
           timeout: 12000, // Longer timeout for jobs (might be more data)
         })
       },
@@ -179,6 +181,7 @@ class OptimizedAPIService {
         key: 'apiKeys', 
         promise: this.fetchWithRetry(buildApiUrl(API_ENDPOINTS.API_KEYS.LIST), {
           headers: authHeaders,
+          credentials: 'include' as RequestCredentials,
           timeout: 8000,
         })
       },
@@ -186,6 +189,7 @@ class OptimizedAPIService {
         key: 'usage', 
         promise: this.fetchWithRetry(buildApiUrl(API_ENDPOINTS.USER.USAGE), {
           headers: authHeaders,
+          credentials: 'include' as RequestCredentials,
           timeout: 8000,
         })
       },
@@ -205,7 +209,7 @@ class OptimizedAPIService {
           if (result.value.ok) {
             const data = await result.value.json();
             
-            // Handle different response formats
+            // Handle different response formats based on backend API
             switch (key) {
               case 'profile':
                 results[key] = data.user || data;
@@ -214,10 +218,10 @@ class OptimizedAPIService {
                 results[key] = data.jobs || data;
                 break;
               case 'apiKeys':
-                results[key] = data.keys || data.api_keys || data;
+                results[key] = data.api_keys || data;
                 break;
               case 'usage':
-                results[key] = data;
+                results[key] = data.usage || data;
                 break;
             }
           } else {

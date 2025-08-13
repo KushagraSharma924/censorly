@@ -128,7 +128,7 @@ export const getDefaultFetchOptions = (): RequestInit => ({
   headers: {
     'Content-Type': 'application/json',
   },
-  credentials: 'omit', // Changed from 'include' to 'omit' for CORS compatibility
+  credentials: 'include' as RequestCredentials, // Include cookies for authentication
 });
 
 // Environment check utilities
