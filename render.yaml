@@ -8,12 +8,11 @@ services:
       cd backend
       pip install --upgrade pip
       pip install -r requirements.txt
-      python -c "print('✅ Build completed successfully')"
+      echo "Testing app import..."
+      python -c "from app_supabase import app; print('✅ Build verification successful')"
     startCommand: |
       cd backend
-      chmod +x start.sh
-      echo "Starting on port $PORT"
-      ./start.sh
+      python run_production.py
     envVars:
       - key: FLASK_ENV
         value: production

@@ -51,19 +51,29 @@ export FLASK_APP=app_supabase.py
 # Start the main Supabase application
 echo "Starting Supabase-based application..."
 echo "PORT: ${PORT:-10000}"
+echo "HOST: 0.0.0.0"
 echo "Binding to: 0.0.0.0:${PORT:-10000}"
 
-# Use gunicorn for production deployment
+# Ensure PORT is set
+if [ -z "$PORT" ]; then
+    export PORT=10000
+    echo "PORT not set, defaulting to 10000"
+fi
+
+# Start gunicorn with immediate binding
+echo "Starting gunicorn on 0.0.0.0:$PORT"
 exec gunicorn app_supabase:app \
-  --bind 0.0.0.0:${PORT:-10000} \
+  --bind "0.0.0.0:$PORT" \
   --workers=1 \
   --threads=4 \
-  --timeout=60 \
+  --timeout=120 \
   --keep-alive=2 \
   --max-requests=1000 \
   --max-requests-jitter=100 \
   --log-level=info \
-  --capture-output \
-  --error-logfile=- \
   --access-logfile=- \
+  --error-logfile=- \
+  --capture-output \
+  --enable-stdio-inheritance \
+  --preload \
   --access-logformat='%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
