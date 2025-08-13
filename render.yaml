@@ -4,8 +4,8 @@ services:
     env: docker
     region: oregon
     plan: starter
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
     buildCommand: ""
     startCommand: ""
     envVars:
