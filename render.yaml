@@ -1,19 +1,11 @@
 services:
   - type: web
     name: censorly-backend
-    env: python
+    env: docker
     region: oregon
     plan: starter
-    buildCommand: |
-      cd backend
-      pip install --upgrade pip
-      pip install -r requirements.txt
-      echo "✅ Testing app import..."
-      python -c "from app_supabase import app; print('✅ App import successful')"
-    startCommand: |
-      cd backend
-      echo "Starting Censorly Backend on port $PORT"
-      python start_render.py
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     envVars:
       - key: FLASK_ENV
         value: production
