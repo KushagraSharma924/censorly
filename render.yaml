@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: censorly-backend
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: |
+      cd backend
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python -c "print('✅ Build completed successfully')"
+    startCommand: |
+      cd backend
+      chmod +x start.sh
+      echo "Starting on port $PORT"
+      ./start.sh
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.9.18
+    healthCheckPath: /health
