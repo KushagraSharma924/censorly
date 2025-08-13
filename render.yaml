@@ -6,7 +6,11 @@ services:
     plan: starter
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    buildCommand: ""
+    startCommand: ""
     envVars:
       - key: FLASK_ENV
         value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
     healthCheckPath: /health

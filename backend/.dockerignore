@@ -14,6 +14,10 @@ app_saas.py.not_phase1
 .env.local
 .env.development
 .env.test
+
+# Backup files (prevent Render from using old configs)
+start.sh.backup
+requirements-phase1.txt.backup
 venv/
 __pycache__/
 *.pyc
