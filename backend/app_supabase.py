@@ -283,11 +283,26 @@ def create_celery_app(app=None):
 app = create_app()
 
 if __name__ == '__main__':
-    # Render uses PORT environment variable, default to 10000 for Render
+    # Render deployment configuration
     port = int(os.environ.get('PORT', 10000))
-    host = os.environ.get('HOST', '0.0.0.0')
+    host = '0.0.0.0'  # Always bind to all interfaces for Render
     debug = os.environ.get('FLASK_ENV') == 'development'
     
-    logger.info(f"Starting server on {host}:{port} (Render compatible)")
-    logger.info(f"Environment: {os.environ.get('FLASK_ENV', 'production')}")
-    app.run(host=host, port=port, debug=debug, threaded=True)
+    logger.info(f"🚀 Starting Censorly Backend on {host}:{port}")
+    logger.info(f"🌍 Environment: {os.environ.get('FLASK_ENV', 'production')}")
+    logger.info(f"🔍 Health check: http://{host}:{port}/health")
+    
+    # For production/Render, use a more robust server configuration
+    if os.environ.get('FLASK_ENV') != 'development':
+        logger.info("🏭 Production mode: Using threaded Flask server")
+        app.run(
+            host=host, 
+            port=port, 
+            debug=False, 
+            threaded=True, 
+            use_reloader=False,
+            use_debugger=False
+        )
+    else:
+        logger.info("🔧 Development mode")
+        app.run(host=host, port=port, debug=debug, threaded=True)

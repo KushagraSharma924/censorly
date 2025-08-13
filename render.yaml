@@ -8,14 +8,12 @@ services:
       cd backend
       pip install --upgrade pip
       pip install -r requirements.txt
-      echo "Testing app import..."
-      python -c "from app_supabase import app; print('✅ Build verification successful')"
+      echo "✅ Testing app import..."
+      python -c "from app_supabase import app; print('✅ App import successful')"
     startCommand: |
       cd backend
-      python run_production.py
+      gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 --keep-alive 2 --log-level info --access-logfile - --error-logfile - app_supabase:app
     envVars:
       - key: FLASK_ENV
         value: production
-      - key: PYTHON_VERSION
-        value: 3.9.18
     healthCheckPath: /health

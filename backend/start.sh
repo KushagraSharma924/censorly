@@ -60,20 +60,15 @@ if [ -z "$PORT" ]; then
     echo "PORT not set, defaulting to 10000"
 fi
 
-# Start gunicorn with immediate binding
-echo "Starting gunicorn on 0.0.0.0:$PORT"
+# Start gunicorn directly with app_supabase:app
+echo "Starting gunicorn with app_supabase:app on 0.0.0.0:$PORT"
 exec gunicorn app_supabase:app \
   --bind "0.0.0.0:$PORT" \
   --workers=1 \
   --threads=4 \
   --timeout=120 \
   --keep-alive=2 \
-  --max-requests=1000 \
-  --max-requests-jitter=100 \
   --log-level=info \
   --access-logfile=- \
   --error-logfile=- \
-  --capture-output \
-  --enable-stdio-inheritance \
-  --preload \
-  --access-logformat='%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
+  --capture-output
