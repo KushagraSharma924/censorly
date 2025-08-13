@@ -4,7 +4,6 @@ Includes functions for API key security and constant-time comparisons.
 """
 
 import os
-import magic
 import hashlib
 import uuid
 import hmac
@@ -13,6 +12,15 @@ import logging
 from typing import Optional, Tuple
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+
+# Try to import magic, fallback if not available
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    MAGIC_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("python-magic not available, using fallback file validation")
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +34,22 @@ def get_file_mimetype(file_obj):
     Returns:
         str: MIME type of the file
     """
+    if not MAGIC_AVAILABLE:
+        # Fallback: use filename extension
+        filename = getattr(file_obj, 'filename', '')
+        if filename:
+            ext = filename.lower().split('.')[-1] if '.' in filename else ''
+            extension_mimetypes = {
+                'mp4': 'video/mp4',
+                'avi': 'video/x-msvideo',
+                'mov': 'video/quicktime',
+                'mkv': 'video/x-matroska',
+                'webm': 'video/webm',
+                'wmv': 'video/x-ms-wmv'
+            }
+            return extension_mimetypes.get(ext, 'application/octet-stream')
+        return 'application/octet-stream'
+    
     try:
         # Save to a temporary location to check with magic
         current_position = file_obj.tell()

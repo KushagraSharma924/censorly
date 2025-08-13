@@ -8,9 +8,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     PORT=10000
 
-# Install system dependencies (minimal for Phase 1 - no ML compilation needed)
+# Install system dependencies (including libmagic for file validation)
 RUN apt-get update && apt-get install -y \
     curl \
+    libmagic1 \
+    libmagic-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory

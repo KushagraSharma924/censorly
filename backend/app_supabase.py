@@ -157,47 +157,21 @@ def create_app():
         if request.endpoint != 'static':
             logger.info(f"{request.method} {request.path} - {request.remote_addr}")
     
-        # Register blueprints
+    # Register blueprints
     if supabase_bp:
         app.register_blueprint(supabase_bp)
         logger.info("Supabase routes blueprint registered")
     else:
-        logger.warning("Supabase blueprint not available, adding fallback routes")
-        # Add fallback API endpoints directly to app
-        @app.route('/api/auth/profile', methods=['GET'])
-        def fallback_profile():
-            return jsonify({
-                'user': {
-                    'id': 'demo-user',
-                    'email': 'demo@example.com',
-                    'full_name': 'Demo User',
-                    'subscription_tier': 'free'
-                }
-            })
-        
-        @app.route('/api/jobs', methods=['GET'])
-        def fallback_jobs():
-            return jsonify({'jobs': []})
-        
-        @app.route('/api/auth/usage', methods=['GET'])
-        def fallback_usage():
-            return jsonify({
-                'videos_processed_this_month': 0,
-                'videos_limit': 5,
-                'subscription_tier': 'free',
-                'days_remaining': 30
-            })
-        
-        @app.route('/api/keys', methods=['GET'])
-        def fallback_keys():
-            return jsonify({'keys': []})
+        logger.error("Supabase blueprint not available - application cannot start properly")
+        raise RuntimeError("Missing required dependencies - check requirements.txt")
     
     # Register health check blueprint (high priority for render deployment)
     if health_bp:
         app.register_blueprint(health_bp)
         logger.info("Health check blueprint registered")
     else:
-        # Root endpoint fallback if health_bp not available
+        logger.error("Health check blueprint not available")
+        raise RuntimeError("Missing health check blueprint")
         @app.route('/', methods=['GET'])
         def root():
             """Root endpoint."""
@@ -225,11 +199,11 @@ def create_app():
                 return jsonify({
                     'status': 'healthy',
                     'service': 'AI Profanity Filter SaaS',
-                    'database': 'supabase_connected' if SUPABASE_AVAILABLE else 'fallback_mode',
+                    'database': 'supabase_connected' if SUPABASE_AVAILABLE else 'disconnected',
                     'timestamp': datetime.utcnow().isoformat(),
                     'version': '2.0.0',
                     'features': [
-                        'supabase_native' if SUPABASE_AVAILABLE else 'fallback_mode',
+                        'supabase_native' if SUPABASE_AVAILABLE else 'database_unavailable',
                         'api_endpoints',
                         'cors_enabled'
                     ]
@@ -238,10 +212,10 @@ def create_app():
             except Exception as e:
                 logger.error(f"Health check error: {str(e)}")
                 return jsonify({
-                    'status': 'healthy_fallback',
+                    'status': 'unhealthy',
                     'error': str(e),
                     'timestamp': datetime.utcnow().isoformat()
-                }), 200
+                }), 500
     
     # Global error handlers
     @app.errorhandler(404)
@@ -265,9 +239,10 @@ def create_app():
             logger.info("✅ Supabase service connected successfully")
         except Exception as e:
             logger.error(f"❌ Supabase connection failed: {str(e)}")
-            # Don't fail startup - let the app run and show errors in health check
+            logger.warning("⚠️ Application may not function properly without database connection")
     else:
-        logger.warning("⚠️ Supabase service not available - running in fallback mode")
+        logger.error("⚠️ Supabase service not available - application requires database connection")
+        raise RuntimeError("Database connection required")
     
     logger.info("🚀 AI Profanity Filter SaaS Platform startup")
     logger.info(f"📍 Server: http://localhost:8080")
