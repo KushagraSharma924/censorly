@@ -10,9 +10,9 @@ export default defineConfig(({ mode }) => ({
     port: 3000,
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        target: "https://ai-profanity-filter.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
         ws: true,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
