@@ -87,16 +87,15 @@ def create_app():
     
     # CORS configuration - More permissive for development and production
     cors_origins = [
+        "https://censorly.vercel.app",  # Production frontend
+        "https://ai-profanity-filter.vercel.app",  # Alternative frontend 
         "http://localhost:3000", 
         "http://localhost:5173", 
         "https://ai-profanity-filter.onrender.com",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8080",
-        "https://profanityfilter.ai",
-        "https://ai-profanity-filter.vercel.app",
-        "https://censorly.vercel.app",
-        "https://*.vercel.app"  # Allow all Vercel apps
+        "https://profanityfilter.ai"
     ]
     
     # Add Render domain if deployed

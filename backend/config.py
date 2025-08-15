@@ -136,8 +136,14 @@ class ProductionConfig(Config):
     # Enforce HTTPS in production
     PREFERRED_URL_SCHEME = 'https'
     
-    # More restrictive CORS for production
-    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '').split(',')
+    # Explicit CORS origins for production with credentials support
+    CORS_ORIGINS = [
+        "https://censorly.vercel.app",
+        "https://ai-profanity-filter.vercel.app", 
+        "https://profanityfilter.ai",
+        "https://ai-profanity-filter.onrender.com",
+        # Add any other production domains you need
+    ]
 
 
 class TestingConfig(Config):
