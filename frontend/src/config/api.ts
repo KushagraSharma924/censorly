@@ -3,13 +3,21 @@
 
 // Environment-based API configuration
 const getApiBaseUrl = (): string => {
-  // Check if we're running in development mode
-  if (import.meta.env.DEV) {
-    return import.meta.env.VITE_API_BASE_URL || 'https://ai-profanity-filter.onrender.com';
-  }
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  const fallbackUrl = 'https://ai-profanity-filter.onrender.com';
   
-  // Production environment
-  return import.meta.env.VITE_API_BASE_URL || 'https://ai-profanity-filter.onrender.com';
+  // Debug logging
+  console.log('Environment check:', {
+    isDev: import.meta.env.DEV,
+    envUrl: envUrl,
+    fallback: fallbackUrl
+  });
+  
+  // Always use production URL for now
+  const finalUrl = envUrl || fallbackUrl;
+  console.log('Final API URL:', finalUrl);
+  
+  return finalUrl;
 };
 
 // Main API configuration
