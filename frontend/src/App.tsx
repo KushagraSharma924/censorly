@@ -11,7 +11,7 @@ import UploadPage from '@/pages/UploadPage';
 import ProfilePage from '@/pages/ProfilePage';
 import Docs from '@/pages/Docs';
 
-// Simple auth check
+// Simple auth check - consistent with existing codebase
 const isAuthenticated = () => {
   return !!localStorage.getItem('access_token');
 };

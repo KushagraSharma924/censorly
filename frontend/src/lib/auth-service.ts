@@ -41,7 +41,7 @@ export interface ErrorResponse {
 }
 
 class AuthService {
-  private readonly TOKEN_KEY = 'auth_token';
+  private readonly TOKEN_KEY = 'access_token';  // Changed to match existing usage
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
 
   // Token management - using HttpOnly cookies instead of localStorage
