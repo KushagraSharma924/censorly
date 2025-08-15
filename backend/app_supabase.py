@@ -131,8 +131,12 @@ def create_app():
         if request.method == "OPTIONS":
             # Create a response with appropriate CORS headers
             response = make_response()
-            response.headers.add("Access-Control-Allow-Origin", "*")
-            response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-API-Key,X-Requested-With,Accept,Origin")
+            # Use specific origin instead of wildcard for credentials support
+            origin = request.headers.get('Origin')
+            if origin in cors_origins:
+                response.headers.add("Access-Control-Allow-Origin", origin)
+                response.headers.add("Access-Control-Allow-Credentials", "true")
+            response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-API-Key,X-Requested-With,Accept,Origin,X-CSRF-TOKEN,X-XSRF-TOKEN")
             response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS,PATCH")
             response.headers.add('Access-Control-Max-Age', '86400')
             return response
