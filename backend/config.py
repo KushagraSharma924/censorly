@@ -118,7 +118,7 @@ class DevelopmentConfig(Config):
     
     # CORS Origins for development
     CORS_ORIGINS = [
-        "http://localhost:8080",
+        "https://ai-profanity-filter.onrender.com",
         "http://localhost:5173", 
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",

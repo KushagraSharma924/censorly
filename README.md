@@ -153,7 +153,7 @@ RATE_LIMIT_WINDOW=3600
 ```python
 import requests
 
-response = requests.post('http://localhost:8080/api/v2/detect-text', 
+response = requests.post('https://ai-profanity-filter.onrender.com/api/v2/detect-text', 
     headers={'Authorization': 'Bearer YOUR_JWT_TOKEN'},
     json={'text': 'Your text to analyze'}
 )
@@ -172,7 +172,7 @@ data = {
     'sensitivity': 'high'
 }
 
-response = requests.post('http://localhost:8080/api/v2/process-video',
+response = requests.post('https://ai-profanity-filter.onrender.com/api/v2/process-video',
     headers={'Authorization': 'Bearer YOUR_JWT_TOKEN'},
     files=files,
     data=data
@@ -238,10 +238,10 @@ npm test
 ### API Testing
 ```bash
 # Health check
-curl http://localhost:8080/health
+curl https://ai-profanity-filter.onrender.com/health
 
 # Test detection (requires auth)
-curl -X POST http://localhost:8080/api/v2/detect-text \
+curl -X POST https://ai-profanity-filter.onrender.com/api/v2/detect-text \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"text": "Test message"}'

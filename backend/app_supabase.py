@@ -89,7 +89,7 @@ def create_app():
     cors_origins = [
         "http://localhost:3000", 
         "http://localhost:5173", 
-        "http://localhost:8080",
+        "https://ai-profanity-filter.onrender.com",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8080",
@@ -245,9 +245,9 @@ def create_app():
         raise RuntimeError("Database connection required")
     
     logger.info("🚀 AI Profanity Filter SaaS Platform startup")
-    logger.info(f"📍 Server: http://localhost:8080")
-    logger.info(f"📚 API Docs: http://localhost:8080/api/docs")
-    logger.info(f"🔍 Health: http://localhost:8080/health")
+    logger.info(f"📍 Server: https://ai-profanity-filter.onrender.com")
+    logger.info(f"📚 API Docs: https://ai-profanity-filter.onrender.com/api/docs")
+    logger.info(f"🔍 Health: https://ai-profanity-filter.onrender.com/health")
     logger.info(f"🌍 Environment: {os.getenv('FLASK_ENV', 'Production')}")
     
     return app

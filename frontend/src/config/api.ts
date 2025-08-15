@@ -5,7 +5,7 @@
 const getApiBaseUrl = (): string => {
   // Check if we're running in development mode
   if (import.meta.env.DEV) {
-    return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    return import.meta.env.VITE_API_BASE_URL || 'https://ai-profanity-filter.onrender.com';
   }
   
   // Production environment
