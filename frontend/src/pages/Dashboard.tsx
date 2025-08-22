@@ -94,6 +94,23 @@ export const Dashboard: React.FC = () => {
   const [showNewApiKey, setShowNewApiKey] = useState(false);
 
   useEffect(() => {
+    // Warm up the backend on component mount
+    const warmupBackend = async () => {
+      try {
+        console.log('🔥 Warming up backend...');
+        const response = await fetch('https://ai-profanity-filter.onrender.com/health', {
+          method: 'GET',
+          cache: 'no-cache'
+        });
+        if (response.ok) {
+          console.log('✅ Backend warmed up successfully');
+        }
+      } catch (error) {
+        console.warn('⚠️ Backend warmup failed:', error);
+      }
+    };
+
+    warmupBackend();
     fetchDashboardData();
   }, []);
 
