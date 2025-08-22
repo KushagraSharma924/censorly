@@ -1,7 +1,4 @@
-# Decorators module for rate limiting, authentication, and security
-from .rate_limiting import rate_limit_only
-from .csrf_protection import csrf_protect, csrf_token_required
-
+# Decorators module for authentication and security
 try:
     from .api_security import secure_api_key_required
 except ImportError:
