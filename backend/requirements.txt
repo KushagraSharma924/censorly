@@ -1,4 +1,4 @@
-# Production Flask Application Requirements
+# Production Flask Application Requirements - Only what we actually use
 flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
@@ -6,26 +6,19 @@ python-dotenv==1.0.0
 supabase==2.0.2
 bcrypt==4.0.1
 PyJWT==2.8.0
-openai-whisper==20231117
-better-profanity==0.7.0
-transformers==4.35.2
-torch==2.1.0
-numpy==1.24.4
-scikit-learn==1.3.2
-pandas==2.1.3
-accelerate==0.24.1
-datasets==2.14.6
+requests==2.31.0
 
-# Media processing dependencies
+# Profanity Detection - Core functionality
+better-profanity==0.7.0
+
+# AI Speech-to-Text - Required for video processing
+openai-whisper==20231117
+
+# Audio/Video Processing - Core functionality  
 ffmpeg-python==0.2.0
 pydub==0.25.1
+numpy==1.24.4
 
-# File handling & Storage
-boto3==1.28.85
-botocore==1.31.85
-
-# Validation & Security
-marshmallow==3.20.1
+# File handling
 python-multipart==0.0.6
 python-magic==0.4.27
-requests==2.31.0
