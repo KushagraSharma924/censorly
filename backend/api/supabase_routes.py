@@ -377,6 +377,27 @@ def logout():
         logger.error(f"Logout error: {str(e)}")
         return jsonify({'error': 'Logout failed'}), 500
 
+@supabase_bp.route('/auth/debug-cookies', methods=['GET'])
+def debug_cookies():
+    """Debug endpoint to check if cookies are being received."""
+    try:
+        cookies = dict(request.cookies)
+        headers = dict(request.headers)
+        
+        return jsonify({
+            'cookies': cookies,
+            'access_token_cookie': request.cookies.get('access_token'),
+            'refresh_token_cookie': request.cookies.get('refresh_token'),
+            'authorization_header': headers.get('Authorization'),
+            'origin': headers.get('Origin'),
+            'user_agent': headers.get('User-Agent'),
+            'url_root': request.url_root
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Debug cookies error: {str(e)}")
+        return jsonify({'error': 'Debug failed'}), 500
+
 @supabase_bp.route('/auth/verify-token', methods=['POST'])
 def verify_token():
     """Verify JWT token validity."""
