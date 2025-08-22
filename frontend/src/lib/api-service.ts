@@ -12,9 +12,11 @@ interface RequestOptions extends RequestInit {
 class APIService {
   private async makeRequest<T>(
     endpoint: string,
-    options: RequestOptions = {}
+    options: RequestOptions = {},
+    retryCount: number = 0
   ): Promise<T> {
-    const { timeout = 10000, ...fetchOptions } = options;
+    const { timeout = 30000, ...fetchOptions } = options; // Increased timeout to 30s for production
+    const maxRetries = 2;
     
     const url = buildApiUrl(endpoint);
     
@@ -37,7 +39,10 @@ class APIService {
 
     // Add timeout support
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const timeoutId = setTimeout(() => {
+      console.warn(`Request timeout after ${timeout}ms for ${endpoint}`);
+      controller.abort();
+    }, timeout);
 
     try {
       const response = await fetch(url, {
@@ -57,7 +62,20 @@ class APIService {
       return await response.json();
     } catch (error) {
       clearTimeout(timeoutId);
+      
+      // Handle specific abort errors and retry
       if (error instanceof Error) {
+        if (error.name === 'AbortError' && retryCount < maxRetries) {
+          console.warn(`Request aborted, retrying (${retryCount + 1}/${maxRetries}) for ${endpoint}`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+          return this.makeRequest<T>(endpoint, options, retryCount + 1);
+        }
+        
+        // Provide more user-friendly error messages
+        if (error.name === 'AbortError') {
+          throw new Error('Request timed out. Please check your connection and try again.');
+        }
+        
         throw error;
       }
       throw new Error('An unexpected error occurred');

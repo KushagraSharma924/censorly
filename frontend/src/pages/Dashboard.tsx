@@ -127,6 +127,9 @@ export const Dashboard: React.FC = () => {
         }
       } else {
         console.error('❌ Profile fetch failed:', profileRes.reason);
+        // Set a default profile to prevent loading states
+        const fallbackProfile = { email: 'User', full_name: 'User' };
+        setProfile(fallbackProfile);
       }
 
       // Handle jobs data
@@ -138,6 +141,8 @@ export const Dashboard: React.FC = () => {
         }
       } else {
         console.error('❌ Jobs fetch failed:', jobsRes.reason);
+        // Set empty jobs array to prevent loading states
+        setJobs([]);
       }
 
       // Handle API keys data
@@ -150,6 +155,8 @@ export const Dashboard: React.FC = () => {
         }
       } else {
         console.error('❌ API Keys fetch failed:', keysRes.reason);
+        // Set empty API keys array to prevent loading states
+        setApiKeys([]);
       }
 
       // Handle usage data
@@ -159,6 +166,14 @@ export const Dashboard: React.FC = () => {
         setUsageStats(usageData);
       } else {
         console.error('❌ Usage fetch failed:', usageRes.reason);
+        // Set fallback usage stats to prevent loading states
+        setUsageStats({
+          usage: {
+            upload: { current: 0, limit: 10 },
+            api_keys: { current: 0, limit: 3 }
+          },
+          tier: 'free'
+        });
       }
 
     } catch (error) {
@@ -246,7 +261,8 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  // Show skeleton only during initial load when we don't have any data yet
+  if (isLoading && isInitialLoad && !profile && !jobs && !apiKeys && !usageStats) {
     return (
       <div className="min-h-screen bg-white">
         <Header />
