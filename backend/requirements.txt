@@ -5,6 +5,7 @@ gunicorn==21.2.0
 python-dotenv==1.0.0
 supabase==2.0.2
 bcrypt==4.0.1
+PyJWT==2.8.0
 openai-whisper==20231117
 better-profanity==0.7.0
 transformers==4.35.2
