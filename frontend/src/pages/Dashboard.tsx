@@ -107,9 +107,10 @@ export const Dashboard: React.FC = () => {
       if (profileRes.status === 'fulfilled') {
         console.log('✅ Profile data:', profileRes.value);
         const profileData = profileRes.value;
-        if (profileData.user) {
-          setProfile(profileData.user);
-          localStorage.setItem('user', JSON.stringify(profileData.user));
+        // Profile data is returned directly, not wrapped in .user
+        if (profileData && profileData.id) {
+          setProfile(profileData);
+          localStorage.setItem('user', JSON.stringify(profileData));
           window.dispatchEvent(new CustomEvent('userDataUpdated'));
         }
       } else {
@@ -131,8 +132,9 @@ export const Dashboard: React.FC = () => {
       if (keysRes.status === 'fulfilled') {
         console.log('✅ API Keys data:', keysRes.value);
         const keysData = keysRes.value;
-        if (keysData.keys) {
-          setApiKeys(keysData.keys);
+        // API keys are returned as 'api_keys' not 'keys'
+        if (keysData.api_keys || keysData.keys) {
+          setApiKeys(keysData.api_keys || keysData.keys);
         }
       } else {
         console.error('❌ API Keys fetch failed:', keysRes.reason);
@@ -170,8 +172,8 @@ export const Dashboard: React.FC = () => {
 
       // Refresh API keys list
       const keysData = await apiService.getApiKeys();
-      if (keysData.keys) {
-        setApiKeys(keysData.keys);
+      if (keysData.api_keys || keysData.keys) {
+        setApiKeys(keysData.api_keys || keysData.keys);
       }
     } catch (error) {
       console.error('Error creating API key:', error);
@@ -184,8 +186,8 @@ export const Dashboard: React.FC = () => {
       
       // Refresh API keys list
       const keysData = await apiService.getApiKeys();
-      if (keysData.keys) {
-        setApiKeys(keysData.keys);
+      if (keysData.api_keys || keysData.keys) {
+        setApiKeys(keysData.api_keys || keysData.keys);
       }
     } catch (error) {
       console.error('Error deleting API key:', error);
