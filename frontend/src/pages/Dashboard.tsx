@@ -280,8 +280,8 @@ export const Dashboard: React.FC = () => {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">Videos Processed This Month</p>
                     {(() => {
-                      const processed = usageStats?.usage?.videos_processed_this_month || usageStats?.videos_processed_this_month || 0;
-                      const limit = usageStats?.limits?.videos_per_month || usageStats?.videos_limit || 0;
+                      const processed = usageStats?.usage?.upload?.current || 0;
+                      const limit = usageStats?.usage?.upload?.limit || 0;
                       const percentage = limit > 0 ? (processed / limit) * 100 : 0;
                       const isNearLimit = percentage >= 80;
                       const isAtLimit = percentage >= 100;
@@ -320,7 +320,7 @@ export const Dashboard: React.FC = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Subscription</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {usageStats?.subscription_tier || 'Free'}
+                      {usageStats?.tier || 'Free'}
                     </p>
                     <p className="text-sm text-gray-500 mt-2">{usageStats?.days_remaining || 0} days remaining</p>
                   </div>
@@ -332,12 +332,37 @@ export const Dashboard: React.FC = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">API Keys</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {apiKeys?.length || 0}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-2">Total created</p>
+                    {(() => {
+                      const current = usageStats?.usage?.api_keys?.current || 0;
+                      const limit = usageStats?.usage?.api_keys?.limit || 3;
+                      const percentage = limit > 0 ? (current / limit) * 100 : 0;
+                      const isNearLimit = percentage >= 80;
+                      const isAtLimit = percentage >= 100;
+                      
+                      return (
+                        <>
+                          <p className={`text-2xl font-bold ${isAtLimit ? 'text-red-600' : isNearLimit ? 'text-orange-600' : 'text-black'}`}>
+                            {current} / {limit}
+                          </p>
+                          <Progress 
+                            value={percentage} 
+                            className={`mt-2 ${isAtLimit ? 'bg-red-100' : isNearLimit ? 'bg-orange-100' : ''}`}
+                          />
+                          {isAtLimit && (
+                            <p className="text-xs text-red-600 mt-1 font-medium">
+                              ⚠️ API key limit reached! Upgrade to create more.
+                            </p>
+                          )}
+                          {isNearLimit && !isAtLimit && (
+                            <p className="text-xs text-orange-600 mt-1">
+                              ⚠️ Approaching API key limit ({Math.round(percentage)}%)
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                   <Key className="h-8 w-8 text-gray-400" />
                 </div>
