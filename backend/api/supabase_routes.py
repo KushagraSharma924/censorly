@@ -3,7 +3,7 @@ Supabase-based API Routes for AI Profanity Filter SaaS Platform
 Complete replacement for SQLAlchemy-based routes using pure Supabase.
 """
 
-from flask import Blueprint, request, jsonify, current_app, send_file, make_response
+from flask import Blueprint, request, jsonify, current_app, send_file, make_response, g
 from functools import wraps
 import logging
 from datetime import datetime, timedelta
@@ -42,50 +42,35 @@ supabase_bp = Blueprint('supabase_api', __name__, url_prefix='/api')
 # For now, we'll implement basic rate limiting
 
 def supabase_auth_required(f):
-    """Decorator for JWT authentication using httpOnly cookies."""
+    """Decorator to require Supabase authentication for a route."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Check if token exists in cookie
-        token = request.cookies.get('access_token')
-        if not token:
-            # Fall back to Authorization header for backward compatibility
-            auth_header = request.headers.get('Authorization')
-            if not auth_header or not auth_header.startswith('Bearer '):
-                return jsonify({'error': 'Authentication required'}), 401
-            token = auth_header.split(' ')[1]
-        
         try:
-            # Manually decode JWT token
-            import jwt
-            from flask import current_app
+            from flask_jwt_extended import decode_token
             
-            payload = jwt.decode(
-                token, 
-                current_app.config['JWT_SECRET_KEY'], 
-                algorithms=['HS256']
-            )
+            # Get the token from the cookie
+            token = request.cookies.get('auth_token')
+            if not token:
+                return jsonify({'error': 'No authentication token found'}), 401
             
-            user_id = payload.get('sub')  # JWT standard claim for subject
+            # Decode the token using Flask-JWT-Extended
+            decoded_token = decode_token(token)
+            user_email = decoded_token.get('sub')
             
-            if not user_id:
+            if not user_email:
                 return jsonify({'error': 'Invalid token'}), 401
-            
-            # Get user data from database
-            user_data = supabase_service.get_user_by_id(user_id)
-            if not user_data:
-                return jsonify({'error': 'User not found'}), 404
-            
-            # Add user data to request context
-            request.current_user = user_data
-            request.user_id = user_id
+                
+            # Get user from Supabase
+            user = supabase_service.get_user_by_email(user_email)
+            if not user:
+                return jsonify({'error': 'User not found'}), 401
+                
+            # Store user in g for use in the route
+            g.current_user = user
             return f(*args, **kwargs)
             
-        except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token has expired'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token'}), 401
         except Exception as e:
-            logger.error(f"Auth error: {str(e)}")
+            print(f"Authentication error: {str(e)}")
             return jsonify({'error': 'Authentication failed'}), 401
     
     return decorated_function
@@ -488,15 +473,11 @@ def test_profile():
         return jsonify({'error': str(e)}), 500
 
 @supabase_bp.route('/auth/profile', methods=['GET'])
-# @supabase_auth_required  # Temporarily disabled for testing
+@supabase_auth_required
 def get_profile():
     """Get user profile."""
     try:
-        # Temporarily return the real user data for testing
-        user = supabase_service.get_user_by_email('kush090605@gmail.com')
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-            
+        user = g.current_user
         subscription = supabase_service.get_user_subscription(user['id'])
         
         return jsonify({
@@ -809,7 +790,7 @@ def get_usage_stats_alias():
 def list_api_keys():
     """List user's API keys."""
     try:
-        user = request.current_user
+        user = g.current_user
         api_keys = supabase_service.get_user_api_keys(user['id'])
         
         # Remove sensitive data
@@ -948,7 +929,7 @@ def delete_api_key(key_id):
 def list_jobs():
     """List user's jobs."""
     try:
-        user = request.current_user
+        user = g.current_user
         page = int(request.args.get('page', 1))
         limit = min(int(request.args.get('limit', 20)), 100)
         offset = (page - 1) * limit

@@ -4,6 +4,7 @@ Production Flask Application for Censorly - AI Profanity Filter SaaS Platform
 
 from flask import Flask
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 import os
 import logging
 from dotenv import load_dotenv
@@ -26,7 +27,12 @@ def create_app():
     
     # Configure Flask
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+    app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY')  # Use same secret for JWT
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False  # Don't expire access tokens for now
     app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
+    
+    # Initialize JWT
+    jwt = JWTManager(app)
     
     # Configure CORS for production
     CORS(app, 
