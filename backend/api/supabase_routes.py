@@ -49,7 +49,7 @@ def supabase_auth_required(f):
             from flask_jwt_extended import decode_token
             
             # Get the token from the cookie
-            token = request.cookies.get('auth_token')
+            token = request.cookies.get('access_token')
             if not token:
                 return jsonify({'error': 'No authentication token found'}), 401
             
