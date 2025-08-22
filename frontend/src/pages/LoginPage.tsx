@@ -46,8 +46,10 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(loginData.email, loginData.password);
-      // Redirect will be handled by the auth context or other logic
-      window.location.href = '/dashboard';
+      // Small delay to ensure cookies are set before redirect
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 100);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Login failed');
     } finally {
@@ -76,8 +78,10 @@ const LoginPage: React.FC = () => {
 
     try {
       await register(registerData.email, registerData.password, registerData.name);
-      // Redirect will be handled by the auth context or other logic
-      window.location.href = '/dashboard';
+      // Small delay to ensure cookies are set before redirect
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 100);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Registration failed');
     } finally {

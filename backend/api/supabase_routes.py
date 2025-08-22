@@ -262,7 +262,7 @@ def register():
                     max_age=max_age_access,
                     httponly=True,
                     secure=is_production,  # Only secure in production
-                    samesite='Lax' if is_production else 'Strict'  # More permissive for cross-origin in production
+                    samesite='None' if is_production else 'Strict'  # None required for cross-origin in production
                 )
                 
                 if auth_result.get('refresh_token'):
@@ -272,7 +272,7 @@ def register():
                         max_age=max_age_refresh,
                         httponly=True,
                         secure=is_production,
-                        samesite='Lax' if is_production else 'Strict'
+                        samesite='None' if is_production else 'Strict'
                     )
                 
                 return response
@@ -337,7 +337,7 @@ def login():
                 max_age=max_age_access,
                 httponly=True,
                 secure=is_production,  # Only secure in production
-                samesite='Lax' if is_production else 'Strict'  # More permissive for cross-origin in production
+                samesite='None' if is_production else 'Strict'  # None required for cross-origin in production
             )
             
             if result.get('refresh_token'):
@@ -347,7 +347,7 @@ def login():
                     max_age=max_age_refresh,
                     httponly=True,
                     secure=is_production,
-                    samesite='Lax' if is_production else 'Strict'
+                    samesite='None' if is_production else 'Strict'
                 )
                 
             return response, 200
@@ -376,27 +376,6 @@ def logout():
     except Exception as e:
         logger.error(f"Logout error: {str(e)}")
         return jsonify({'error': 'Logout failed'}), 500
-
-@supabase_bp.route('/auth/debug-cookies', methods=['GET'])
-def debug_cookies():
-    """Debug endpoint to check if cookies are being received."""
-    try:
-        cookies = dict(request.cookies)
-        headers = dict(request.headers)
-        
-        return jsonify({
-            'cookies': cookies,
-            'access_token_cookie': request.cookies.get('access_token'),
-            'refresh_token_cookie': request.cookies.get('refresh_token'),
-            'authorization_header': headers.get('Authorization'),
-            'origin': headers.get('Origin'),
-            'user_agent': headers.get('User-Agent'),
-            'url_root': request.url_root
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Debug cookies error: {str(e)}")
-        return jsonify({'error': 'Debug failed'}), 500
 
 @supabase_bp.route('/auth/verify-token', methods=['POST'])
 def verify_token():
