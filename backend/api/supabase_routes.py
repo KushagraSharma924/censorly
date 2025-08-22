@@ -881,13 +881,48 @@ def create_api_key():
         logger.error(f"Create API key error: {str(e)}")
         return jsonify({'error': 'Failed to create API key'}), 500
 
-@supabase_bp.route('/keys/<key_id>', methods=['DELETE'])
-@supabase_auth_required
+@supabase_bp.route('/keys/<key_id>', methods=['DELETE', 'OPTIONS'])
 def delete_api_key(key_id):
     """Delete an API key."""
-    try:
-        user = request.current_user
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        origin = request.headers.get('Origin')
+        if origin in ["https://censorly.vercel.app", "http://localhost:3000", "http://localhost:5173"]:
+            response.headers.add("Access-Control-Allow-Origin", origin)
+            response.headers.add("Access-Control-Allow-Credentials", "true")
+        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-API-Key,X-Requested-With,Accept,Origin")
+        response.headers.add('Access-Control-Allow-Methods', "DELETE,OPTIONS")
+        return response
+
+    # Apply authentication for actual DELETE request
+    token = request.cookies.get('access_token')
+    if not token:
+        return jsonify({'error': 'Authentication required'}), 401
         
+    try:
+        # Verify JWT token
+        payload = jwt.decode(
+            token, 
+            current_app.config['JWT_SECRET_KEY'], 
+            algorithms=['HS256']
+        )
+        user_id = payload['user_id']
+        
+        # Get user from Supabase
+        user = supabase_service.get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 401
+            
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+    except Exception as e:
+        logger.error(f"Auth error: {str(e)}")
+        return jsonify({'error': 'Authentication failed'}), 401
+    
+    try:
         result = supabase_service.delete_api_key(key_id, user['id'])
         
         if result['success']:
