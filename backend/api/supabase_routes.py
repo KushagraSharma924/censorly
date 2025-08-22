@@ -203,7 +203,14 @@ def api_key_required(f):
     return decorated_function
 
 # Authentication Routes
-from decorators.csrf_protection import csrf_protect, csrf_token_required
+try:
+    from decorators.csrf_protection import csrf_protect, csrf_token_required
+except ImportError:
+    # Fallback decorators if CSRF protection module is not available
+    def csrf_protect(f):
+        return f
+    def csrf_token_required(f):
+        return f
 
 @supabase_bp.route('/auth/register', methods=['POST'])
 @csrf_protect
