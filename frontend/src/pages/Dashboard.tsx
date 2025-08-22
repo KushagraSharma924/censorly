@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/Header';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
 import { API_CONFIG } from '@/config/api';
+import { apiService } from '@/lib/api-service';
 import { 
   Key, 
   CreditCard, 
@@ -97,25 +98,17 @@ export const Dashboard: React.FC = () => {
         return;
       }
 
-      // Fetch all data in parallel
+      // Fetch all data in parallel using API service
       const [profileRes, jobsRes, keysRes, usageRes] = await Promise.allSettled([
-        fetch(`${API_CONFIG.BASE_URL}/api/auth/profile`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_CONFIG.BASE_URL}/api/jobs`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_CONFIG.BASE_URL}/api/auth/usage`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        apiService.getProfile(),
+        apiService.getJobs(),
+        apiService.getApiKeys(),
+        apiService.getUsageStats()
       ]);
 
       // Handle profile data
-      if (profileRes.status === 'fulfilled' && profileRes.value.ok) {
-        const profileData = await profileRes.value.json();
+      if (profileRes.status === 'fulfilled') {
+        const profileData = profileRes.value;
         if (profileData.user) {
           setProfile(profileData.user);
           localStorage.setItem('user', JSON.stringify(profileData.user));
@@ -124,24 +117,24 @@ export const Dashboard: React.FC = () => {
       }
 
       // Handle jobs data
-      if (jobsRes.status === 'fulfilled' && jobsRes.value.ok) {
-        const jobsData = await jobsRes.value.json();
+      if (jobsRes.status === 'fulfilled') {
+        const jobsData = jobsRes.value;
         if (jobsData.jobs) {
           setJobs(jobsData.jobs);
         }
       }
 
       // Handle API keys data
-      if (keysRes.status === 'fulfilled' && keysRes.value.ok) {
-        const keysData = await keysRes.value.json();
+      if (keysRes.status === 'fulfilled') {
+        const keysData = keysRes.value;
         if (keysData.keys) {
           setApiKeys(keysData.keys);
         }
       }
 
       // Handle usage data
-      if (usageRes.status === 'fulfilled' && usageRes.value.ok) {
-        const usageData = await usageRes.value.json();
+      if (usageRes.status === 'fulfilled') {
+        const usageData = usageRes.value;
         setUsageStats(usageData);
       }
 
@@ -160,36 +153,16 @@ export const Dashboard: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name: newApiKeyName.trim() })
-      });
+      const data = await apiService.createApiKey(newApiKeyName.trim());
+      setNewApiKey(data.key?.key || data.api_key || 'Key created successfully');
+      setShowNewApiKey(true);
+      setShowApiKeyForm(false);
+      setNewApiKeyName('');
 
-      if (response.ok) {
-        const data = await response.json();
-        setNewApiKey(data.key?.key || data.api_key || 'Key created successfully');
-        setShowNewApiKey(true);
-        setShowApiKeyForm(false);
-        setNewApiKeyName('');
-
-        // Refresh API keys list
-        const keysResponse = await fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (keysResponse.ok) {
-          const keysData = await keysResponse.json();
-          if (keysData.keys) {
-            setApiKeys(keysData.keys);
-          }
-        }
-      } else {
-        console.error('Failed to create API key');
+      // Refresh API keys list
+      const keysData = await apiService.getApiKeys();
+      if (keysData.keys) {
+        setApiKeys(keysData.keys);
       }
     } catch (error) {
       console.error('Error creating API key:', error);
@@ -198,24 +171,12 @@ export const Dashboard: React.FC = () => {
 
   const deleteApiKey = async (keyId: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/keys/${keyId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        // Refresh API keys list
-        const keysResponse = await fetch(`${API_CONFIG.BASE_URL}/api/keys`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (keysResponse.ok) {
-          const keysData = await keysResponse.json();
-          if (keysData.keys) {
-            setApiKeys(keysData.keys);
-          }
-        }
+      await apiService.deleteApiKey(keyId);
+      
+      // Refresh API keys list
+      const keysData = await apiService.getApiKeys();
+      if (keysData.keys) {
+        setApiKeys(keysData.keys);
       }
     } catch (error) {
       console.error('Error deleting API key:', error);
