@@ -91,13 +91,8 @@ export const Dashboard: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        console.log('❌ No token found, redirecting to login');
-        window.location.href = '/login';
-        return;
-      }
-
+      console.log('🔄 Fetching dashboard data...');
+      
       // Fetch all data in parallel using API service
       const [profileRes, jobsRes, keysRes, usageRes] = await Promise.allSettled([
         apiService.getProfile(),
@@ -106,36 +101,50 @@ export const Dashboard: React.FC = () => {
         apiService.getUsageStats()
       ]);
 
+      console.log('📊 API Results:', { profileRes, jobsRes, keysRes, usageRes });
+
       // Handle profile data
       if (profileRes.status === 'fulfilled') {
+        console.log('✅ Profile data:', profileRes.value);
         const profileData = profileRes.value;
         if (profileData.user) {
           setProfile(profileData.user);
           localStorage.setItem('user', JSON.stringify(profileData.user));
           window.dispatchEvent(new CustomEvent('userDataUpdated'));
         }
+      } else {
+        console.error('❌ Profile fetch failed:', profileRes.reason);
       }
 
       // Handle jobs data
       if (jobsRes.status === 'fulfilled') {
+        console.log('✅ Jobs data:', jobsRes.value);
         const jobsData = jobsRes.value;
         if (jobsData.jobs) {
           setJobs(jobsData.jobs);
         }
+      } else {
+        console.error('❌ Jobs fetch failed:', jobsRes.reason);
       }
 
       // Handle API keys data
       if (keysRes.status === 'fulfilled') {
+        console.log('✅ API Keys data:', keysRes.value);
         const keysData = keysRes.value;
         if (keysData.keys) {
           setApiKeys(keysData.keys);
         }
+      } else {
+        console.error('❌ API Keys fetch failed:', keysRes.reason);
       }
 
       // Handle usage data
       if (usageRes.status === 'fulfilled') {
+        console.log('✅ Usage data:', usageRes.value);
         const usageData = usageRes.value;
         setUsageStats(usageData);
+      } else {
+        console.error('❌ Usage fetch failed:', usageRes.reason);
       }
 
     } catch (error) {
