@@ -175,9 +175,12 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    // Check free tier limit (3 API keys max)
-    if (apiKeys.length >= 3) {
-      alert('Free tier limit reached. You can only have 3 API keys. Please delete an existing key to create a new one.');
+    // Check free tier limit using usage stats
+    const currentApiKeys = usageStats?.usage?.api_keys?.current || apiKeys.length;
+    const maxApiKeys = usageStats?.usage?.api_keys?.limit || 3;
+    
+    if (currentApiKeys >= maxApiKeys) {
+      alert(`${usageStats?.tier || 'Free'} tier limit reached. You can only have ${maxApiKeys} API keys. Please delete an existing key to create a new one.`);
       return;
     }
 
@@ -188,10 +191,18 @@ export const Dashboard: React.FC = () => {
       setShowApiKeyForm(false);
       setNewApiKeyName('');
 
-      // Refresh API keys list
-      const keysData = await apiService.getApiKeys();
+      // Refresh API keys list and usage stats
+      const [keysData, statsData] = await Promise.all([
+        apiService.getApiKeys(),
+        apiService.getUsageStats()
+      ]);
+      
       if (keysData.api_keys || keysData.keys) {
         setApiKeys(keysData.api_keys || keysData.keys);
+      }
+      
+      if (statsData) {
+        setUsageStats(statsData);
       }
     } catch (error) {
       console.error('Error creating API key:', error);
