@@ -3,7 +3,7 @@ Supabase-based API Routes for AI Profanity Filter SaaS Platform
 Complete replacement for SQLAlchemy-based routes using pure Supabase.
 """
 
-from flask import Blueprint, request, jsonify, current_app, send_file
+from flask import Blueprint, request, jsonify, current_app, send_file, make_response
 from functools import wraps
 import logging
 from datetime import datetime, timedelta
@@ -235,19 +235,47 @@ def register():
             
             if auth_result['success']:
                 logger.info(f"New user registered and logged in: {email}")
-                return jsonify({
+                
+                # Create response
+                response_data = {
                     'message': 'User registered successfully',
                     'user': {
                         'id': result['user']['id'],
                         'email': result['user']['email'],
                         'full_name': result['user']['full_name'],
                         'subscription_tier': result['user']['subscription_tier']
-                    },
-                    'tokens': {
-                        'access_token': auth_result['access_token'],
-                        'refresh_token': auth_result['refresh_token']
                     }
-                }), 201
+                    # Tokens no longer returned in response body
+                }
+                response = make_response(jsonify(response_data), 201)
+                
+                # Set httpOnly cookies for tokens
+                max_age_access = 24 * 60 * 60  # 24 hours
+                max_age_refresh = 30 * 24 * 60 * 60  # 30 days
+                
+                # Check if we're in production (use secure cookies only in production)
+                is_production = os.getenv('RENDER_EXTERNAL_URL') is not None or 'onrender.com' in request.url_root
+                
+                response.set_cookie(
+                    'access_token',
+                    auth_result['access_token'],
+                    max_age=max_age_access,
+                    httponly=True,
+                    secure=is_production,  # Only secure in production
+                    samesite='Lax' if is_production else 'Strict'  # More permissive for cross-origin in production
+                )
+                
+                if auth_result.get('refresh_token'):
+                    response.set_cookie(
+                        'refresh_token',
+                        auth_result['refresh_token'],
+                        max_age=max_age_refresh,
+                        httponly=True,
+                        secure=is_production,
+                        samesite='Lax' if is_production else 'Strict'
+                    )
+                
+                return response
             else:
                 # Registration succeeded but auto-login failed
                 logger.warning(f"Registration succeeded but auto-login failed for: {email}")
@@ -300,13 +328,16 @@ def login():
             max_age_access = 24 * 60 * 60  # 24 hours
             max_age_refresh = 30 * 24 * 60 * 60  # 30 days
             
+            # Check if we're in production (use secure cookies only in production)
+            is_production = os.getenv('RENDER_EXTERNAL_URL') is not None or 'onrender.com' in request.url_root
+            
             response.set_cookie(
                 'access_token',
                 result['access_token'],
                 max_age=max_age_access,
                 httponly=True,
-                secure=True,  # For HTTPS only
-                samesite='Strict'  # CSRF protection
+                secure=is_production,  # Only secure in production
+                samesite='Lax' if is_production else 'Strict'  # More permissive for cross-origin in production
             )
             
             if result.get('refresh_token'):
@@ -315,8 +346,8 @@ def login():
                     result['refresh_token'],
                     max_age=max_age_refresh,
                     httponly=True,
-                    secure=True,
-                    samesite='Strict'
+                    secure=is_production,
+                    samesite='Lax' if is_production else 'Strict'
                 )
                 
             return response, 200
