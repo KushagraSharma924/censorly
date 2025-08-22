@@ -64,6 +64,18 @@ interface UsageStats {
   videos_limit: number;
   subscription_tier: string;
   days_remaining: number;
+  // Additional fields from actual API response
+  usage?: {
+    videos_processed_this_month: number;
+    requests_this_month: number;
+  };
+  limits?: {
+    videos_per_month: number;
+    requests_per_month: number;
+  };
+  current_period?: any;
+  reset_date?: string;
+  tier?: string;
 }
 
 export const Dashboard: React.FC = () => {
@@ -265,12 +277,37 @@ export const Dashboard: React.FC = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Videos Processed</p>
-                    <p className="text-2xl font-bold text-black">
-                      {usageStats?.videos_processed_this_month || 0} / {usageStats?.videos_limit || 0}
-                    </p>
-                    <Progress value={usageStats ? (usageStats.videos_processed_this_month / usageStats.videos_limit) * 100 : 0} className="mt-2" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600">Videos Processed This Month</p>
+                    {(() => {
+                      const processed = usageStats?.usage?.videos_processed_this_month || usageStats?.videos_processed_this_month || 0;
+                      const limit = usageStats?.limits?.videos_per_month || usageStats?.videos_limit || 0;
+                      const percentage = limit > 0 ? (processed / limit) * 100 : 0;
+                      const isNearLimit = percentage >= 80;
+                      const isAtLimit = percentage >= 100;
+                      
+                      return (
+                        <>
+                          <p className={`text-2xl font-bold ${isAtLimit ? 'text-red-600' : isNearLimit ? 'text-orange-600' : 'text-black'}`}>
+                            {processed} / {limit}
+                          </p>
+                          <Progress 
+                            value={percentage} 
+                            className={`mt-2 ${isAtLimit ? 'bg-red-100' : isNearLimit ? 'bg-orange-100' : ''}`}
+                          />
+                          {isAtLimit && (
+                            <p className="text-xs text-red-600 mt-1 font-medium">
+                              ⚠️ Monthly limit reached! Upgrade to continue processing videos.
+                            </p>
+                          )}
+                          {isNearLimit && !isAtLimit && (
+                            <p className="text-xs text-orange-600 mt-1">
+                              ⚠️ Approaching monthly limit ({Math.round(percentage)}%)
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                   <FileVideo className="h-8 w-8 text-black" />
                 </div>

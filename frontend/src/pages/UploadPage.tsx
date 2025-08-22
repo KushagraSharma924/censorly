@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { VideoProcessor } from '@/lib/video-processor';
 import { useAuth } from '@/contexts/auth-context';
+import { apiService } from '@/lib/api-service';
 
 interface UploadedFile extends FileStatusItem {}
 
@@ -26,9 +27,42 @@ const UploadPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isAuthenticated } = useAuth();
 
-  const handleFiles = (fileList: FileList) => {
+  // Check if user has reached their usage limits
+  const checkUsageLimits = async (): Promise<boolean> => {
+    try {
+      const usageStats = await apiService.getUsageStats();
+      const processed = usageStats?.usage?.videos_processed_this_month || usageStats?.videos_processed_this_month || 0;
+      const limit = usageStats?.limits?.videos_per_month || usageStats?.videos_limit || 0;
+      
+      if (processed >= limit) {
+        alert(`Monthly video processing limit reached! You have processed ${processed}/${limit} videos this month. Please upgrade your plan or wait until next month to continue processing videos.`);
+        return false;
+      }
+      
+      if (processed >= limit * 0.9) { // 90% warning
+        const remaining = limit - processed;
+        if (!confirm(`You are close to your monthly limit (${processed}/${limit} videos). You have ${remaining} video${remaining !== 1 ? 's' : ''} remaining this month. Do you want to continue?`)) {
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to check usage limits:', error);
+      // Allow upload if we can't check limits (don't block user unnecessarily)
+      return true;
+    }
+  };
+
+  const handleFiles = async (fileList: FileList) => {
     if (!isAuthenticated) {
       alert('Please log in to upload files');
+      return;
+    }
+
+    // Check usage limits before processing
+    const canProceed = await checkUsageLimits();
+    if (!canProceed) {
       return;
     }
 
