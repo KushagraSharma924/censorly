@@ -49,14 +49,13 @@ class AuthService {
   // We only keep track of authentication state client-side
   
   getToken(): string | null {
-    // We don't actually access the token directly as it's in httpOnly cookie
-    // Instead we track if user is logged in
-    return localStorage.getItem('is_authenticated') ? 'authenticated' : null;
+    // Return the stored authentication token
+    return localStorage.getItem(this.TOKEN_KEY);
   }
 
   setToken(token: string): void {
-    // We don't store the actual token, just the authentication state
-    localStorage.setItem('is_authenticated', 'true');
+    // Store the token for authentication state tracking
+    localStorage.setItem(this.TOKEN_KEY, token);
   }
 
   getRefreshToken(): string | null {
@@ -70,7 +69,7 @@ class AuthService {
 
   removeTokens(): void {
     // Remove authentication state tracking
-    localStorage.removeItem('is_authenticated');
+    localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem('user');
   }
 
