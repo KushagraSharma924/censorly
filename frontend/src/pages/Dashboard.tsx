@@ -163,6 +163,12 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
+    // Check free tier limit (3 API keys max)
+    if (apiKeys.length >= 3) {
+      alert('Free tier limit reached. You can only have 3 API keys. Please delete an existing key to create a new one.');
+      return;
+    }
+
     try {
       const data = await apiService.createApiKey(newApiKeyName.trim());
       setNewApiKey(data.key?.key || data.api_key || 'Key created successfully');
@@ -455,10 +461,18 @@ export const Dashboard: React.FC = () => {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>API Keys</CardTitle>
-                    <Button onClick={() => setShowApiKeyForm(true)}>
-                      <Key className="h-4 w-4 mr-2" />
-                      Create New Key
-                    </Button>
+                    {/* Free tier: 3 API key limit */}
+                    {apiKeys.length >= 3 ? (
+                      <div className="text-sm text-gray-500">
+                        <p>Free tier limit: 3/3 API keys</p>
+                        <p className="text-xs">Delete a key to create a new one</p>
+                      </div>
+                    ) : (
+                      <Button onClick={() => setShowApiKeyForm(true)}>
+                        <Key className="h-4 w-4 mr-2" />
+                        Create New Key ({apiKeys.length}/3)
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
