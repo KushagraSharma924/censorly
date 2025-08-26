@@ -9,7 +9,6 @@ import logging
 from datetime import datetime, timedelta
 import uuid
 import json
-import jwt
 import time
 import os
 import shutil
@@ -46,31 +45,41 @@ def supabase_auth_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         try:
-            from flask_jwt_extended import decode_token
+            from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity, get_jwt
             
-            # Get the token from the cookie
-            token = request.cookies.get('access_token')
-            if not token:
-                return jsonify({'error': 'No authentication token found'}), 401
+            # Verify JWT token in request (handles cookies automatically)
+            verify_jwt_in_request(locations=['cookies'])
             
-            # Decode the token using Flask-JWT-Extended
-            decoded_token = decode_token(token)
-            user_email = decoded_token.get('sub')
+            # Get user identity from token
+            user_id = get_jwt_identity()
+            if not user_id:
+                return jsonify({'error': 'Invalid token identity'}), 401
+            
+            # Get additional claims for validation
+            claims = get_jwt()
+            user_email = claims.get('email')
             
             if not user_email:
-                return jsonify({'error': 'Invalid token'}), 401
+                return jsonify({'error': 'Invalid token claims'}), 401
                 
-            # Get user from Supabase
-            user = supabase_service.get_user_by_email(user_email)
+            # Get user from Supabase using ID for efficiency
+            user = supabase_service.get_user_by_id(user_id)
             if not user:
                 return jsonify({'error': 'User not found'}), 401
+                
+            # Verify email matches (additional security)
+            if user.get('email') != user_email:
+                return jsonify({'error': 'Token-user mismatch'}), 401
                 
             # Store user in g for use in the route
             g.current_user = user
             return f(*args, **kwargs)
             
         except Exception as e:
-            print(f"Authentication error: {str(e)}")
+            # Log authentication errors for debugging (production-safe)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Authentication failed: {type(e).__name__}: {str(e)}")
             return jsonify({'error': 'Authentication failed'}), 401
     
     return decorated_function
@@ -79,6 +88,9 @@ def api_key_required(f):
     """Decorator for API key authentication with rate limiting and enhanced security."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # Get API key from header
         api_key = request.headers.get('X-API-Key')
         
@@ -104,75 +116,6 @@ def api_key_required(f):
                 'message': 'The provided API key is invalid or has been revoked'
             }), 401
         
-        # Check rate limiting
-        if rate_limiter:
-            try:
-                # Determine endpoint type based on URL
-                endpoint_type = 'general'
-                if request.endpoint and 'create_job' in request.endpoint and request.method == 'POST':
-                    endpoint_type = 'processing'
-                elif request.endpoint and 'upload' in request.endpoint:
-                    endpoint_type = 'upload'
-                
-                # Get user data to determine subscription tier
-                user_data = supabase_service.get_user_by_id(key_data['user_id'])
-                if not user_data:
-                    logger.error(f"User not found for API key {key_data['id']}")
-                    return jsonify({'error': 'User not found'}), 404
-                
-                # Get subscription tier (default to 'free' if not set)
-                subscription_tier = user_data.get('subscription_tier', 'free')
-                
-                # Log rate limiting check using user_id instead of API key
-                logger.info(f"Rate limiting check: user_id={key_data['user_id']}, endpoint={request.endpoint}, method={request.method}, type={endpoint_type}")
-                
-                # Check rate limits based on user_id (not API key)
-                # This prevents users from bypassing rate limits by creating multiple API keys
-                if hasattr(rate_limiter, 'check_rate') and not rate_limiter.check_rate(
-                    user_id=key_data['user_id'],  # Use user_id for rate limiting
-                    endpoint_type=endpoint_type,
-                    tier=subscription_tier
-                ):
-                    return jsonify({
-                        'error': 'Rate limit exceeded', 
-                        'message': 'You have exceeded your rate limit. Please try again later or upgrade your plan.'
-                    }), 429
-            
-            except Exception as e:
-                logger.error(f"Rate limiting error: {str(e)}")
-                # Continue if rate limiting fails, but log the error
-                
-                # Get current month start
-                now = datetime.utcnow()
-                month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                
-                # IMPORTANT: Always count usage by USER_ID, not by individual API keys
-                # This prevents users from resetting usage by deleting/recreating API keys
-                if endpoint_type == 'processing':
-                    # Count jobs created this month for processing endpoints
-                    monthly_usage_result = supabase_service.client.table("jobs").select("id").eq("user_id", user_id).gte("created_at", month_start.isoformat()).execute()
-                    current_usage = len(monthly_usage_result.data or [])
-                else:
-                    # For general endpoints, sum usage across ALL user's API keys for this month
-                    # This prevents abuse by deleting and recreating keys
-                    user_keys_result = supabase_service.client.table("api_keys").select("usage_count").eq("user_id", user_id).execute()
-                    current_usage = sum(key.get('usage_count', 0) for key in (user_keys_result.data or []))
-                    # Note: In production, track monthly usage in separate table for better accuracy
-                
-                logger.info(f"Monthly limit check: tier={subscription_tier}, endpoint={endpoint_type}, limit={monthly_limit}, current={current_usage}")
-                
-                if current_usage >= monthly_limit:
-                    # Calculate days until next month
-                    next_month = (month_start + timedelta(days=32)).replace(day=1)
-                    days_until_reset = (next_month - now).days + 1
-                    
-                    logger.warning(f"Monthly limit exceeded for API key {api_key_id}: {current_usage}/{monthly_limit}")
-            except Exception as e:
-                logger.error(f"Rate limiting final error: {str(e)}")
-                # Continue if rate limiting fails
-        else:
-            logger.warning("Rate limiter not available - skipping rate limiting check")
-        
         # Get user data
         user_data = supabase_service.get_user_by_id(key_data['user_id'])
         if not user_data:
@@ -181,8 +124,9 @@ def api_key_required(f):
         # Increment API key usage count for actual operations
         supabase_service.increment_api_key_usage(key_data['id'])
         
-        request.current_user = user_data
-        request.current_api_key = key_data
+        # Store user and key data in g for consistency with auth decorator
+        g.current_user = user_data
+        g.current_api_key = key_data
         return f(*args, **kwargs)
     
     return decorated_function
@@ -358,7 +302,7 @@ def logout():
         # In a stateless JWT setup, logout is handled client-side
         # by removing the token. We can optionally blacklist tokens here.
         
-        user = request.current_user
+        user = g.current_user
         logger.info(f"User logged out: {user['email']}")
         
         return jsonify({
@@ -373,63 +317,66 @@ def logout():
 def verify_token():
     """Verify JWT token validity."""
     try:
+        from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity, get_jwt
+        
+        # Check for Authorization header or cookie
         auth_header = request.headers.get('Authorization')
-        if not auth_header:
-            return jsonify({'error': 'Authorization header required'}), 401
+        if auth_header:
+            try:
+                # Verify token from Authorization header
+                verify_jwt_in_request(locations=['headers'])
+            except Exception:
+                return jsonify({'error': 'Invalid token in header', 'valid': False}), 401
+        else:
+            try:
+                # Verify token from cookie
+                verify_jwt_in_request(locations=['cookies'])
+            except Exception:
+                return jsonify({'error': 'Invalid token in cookie', 'valid': False}), 401
         
-        try:
-            token = auth_header.split(' ')[1]  # Bearer <token>
-        except IndexError:
-            return jsonify({'error': 'Invalid authorization header format'}), 401
+        # Get user identity from verified token
+        user_id = get_jwt_identity()
+        if not user_id:
+            return jsonify({'error': 'Invalid token payload', 'valid': False}), 401
         
-        # Verify token
-        try:
-            payload = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
-            user_id = payload.get('sub')
-            
-            if not user_id:
-                return jsonify({'error': 'Invalid token payload'}), 401
-            
-            # Get user data
-            user_data = supabase_service.get_user_by_id(user_id)
-            if not user_data:
-                return jsonify({'error': 'User not found'}), 401
-            
-            return jsonify({
-                'valid': True,
-                'user': {
-                    'id': user_data['id'],
-                    'email': user_data['email'],
-                    'name': user_data['full_name'],
-                    'subscription_tier': user_data['subscription_tier']
-                }
-            }), 200
-            
-        except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token expired', 'valid': False}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token', 'valid': False}), 401
+        # Get user data
+        user_data = supabase_service.get_user_by_id(user_id)
+        if not user_data:
+            return jsonify({'error': 'User not found', 'valid': False}), 401
+        
+        return jsonify({
+            'valid': True,
+            'user': {
+                'id': user_data['id'],
+                'email': user_data['email'],
+                'name': user_data['full_name'],
+                'subscription_tier': user_data['subscription_tier']
+            }
+        }), 200
             
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
         logger.error(f"Verify token error: {str(e)}")
-        return jsonify({'error': 'Token verification failed'}), 500
+        return jsonify({'error': 'Token verification failed', 'valid': False}), 500
 
 @supabase_bp.route('/auth/refresh', methods=['POST'])
 @supabase_auth_required
 def refresh_token():
     """Refresh JWT token."""
     try:
-        user = request.current_user
+        from flask_jwt_extended import create_access_token
         
-        # Create new access token using JWT
-        payload = {
-            'sub': user['id'],
-            'email': user['email'],
-            'iat': datetime.utcnow(),
-            'exp': datetime.utcnow() + timedelta(hours=24)
-        }
+        user = g.current_user
         
-        new_access_token = jwt.encode(payload, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
+        # Create new access token using Flask-JWT-Extended
+        new_access_token = create_access_token(
+            identity=user['id'],
+            additional_claims={
+                'email': user['email'],
+                'subscription_tier': user['subscription_tier']
+            }
+        )
         
         return jsonify({
             'access_token': new_access_token,
@@ -442,6 +389,8 @@ def refresh_token():
         }), 200
         
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
         logger.error(f"Refresh token error: {str(e)}")
         return jsonify({'error': 'Token refresh failed'}), 500
 
@@ -507,7 +456,7 @@ def get_profile():
 def upload_profile_image():
     """Upload and update user profile image using Supabase Storage."""
     try:
-        user = request.current_user
+        user = g.current_user
         
         # Check if file is in request
         if 'profile_image' not in request.files:
@@ -649,7 +598,7 @@ def upload_profile_image():
 def delete_profile_image():
     """Delete user's profile image."""
     try:
-        user = request.current_user
+        user = g.current_user
         
         # Check if user has a profile image
         if not user.get('profile_image_url'):
@@ -817,7 +766,7 @@ def list_api_keys():
 def create_api_key():
     """Create a new API key."""
     try:
-        user = request.current_user
+        user = g.current_user
         data = request.get_json()
         name = data.get('name', 'Unnamed Key').strip()
         
@@ -870,6 +819,7 @@ def create_api_key():
         return jsonify({'error': 'Failed to create API key'}), 500
 
 @supabase_bp.route('/keys/<key_id>', methods=['DELETE', 'OPTIONS'])
+@supabase_auth_required
 def delete_api_key(key_id):
     """Delete an API key."""
     # Handle preflight OPTIONS request
@@ -883,37 +833,15 @@ def delete_api_key(key_id):
         response.headers.add('Access-Control-Allow-Methods', "DELETE,OPTIONS")
         return response
 
-    # Apply authentication for actual DELETE request
-    token = request.cookies.get('access_token')
-    if not token:
-        return jsonify({'error': 'Authentication required'}), 401
-        
-    try:
-        # Verify JWT token
-        payload = jwt.decode(
-            token, 
-            current_app.config['JWT_SECRET_KEY'], 
-            algorithms=['HS256']
-        )
-        user_id = payload['user_id']
-        
-        # Get user from Supabase
-        user = supabase_service.get_user_by_id(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 401
-            
-    except jwt.ExpiredSignatureError:
-        return jsonify({'error': 'Token has expired'}), 401
-    except jwt.InvalidTokenError:
-        return jsonify({'error': 'Invalid token'}), 401
-    except Exception as e:
-        logger.error(f"Auth error: {str(e)}")
-        return jsonify({'error': 'Authentication failed'}), 401
+    # Get authenticated user
+    user = g.current_user
     
     try:
         result = supabase_service.delete_api_key(key_id, user['id'])
         
         if result['success']:
+            import logging
+            logger = logging.getLogger(__name__)
             logger.info(f"API key deleted: {key_id}")
             return jsonify({'message': 'API key deleted successfully'}), 200
         else:
@@ -952,7 +880,7 @@ def list_jobs():
 def create_job():
     """Create a new job via API with enhanced security."""
     try:
-        user = request.current_user
+        user = g.current_user
         data = request.get_json()
         
         # Validate required fields
@@ -1004,7 +932,7 @@ def create_job():
 def get_job(job_id):
     """Get job details."""
     try:
-        user = request.current_user
+        user = g.current_user
         job = supabase_service.get_job(job_id, user['id'])
         
         if not job:
@@ -1027,7 +955,7 @@ def process_video():
     Handles video upload and initiates processing job.
     """
     try:
-        user = request.current_user
+        user = g.current_user
         
         # Check if file is present
         file_param = 'video_file'  # Use consistent parameter name
@@ -1147,7 +1075,7 @@ def process_video():
 def get_job_status(job_id):
     """Get detailed job status and progress."""
     try:
-        user = request.current_user
+        user = g.current_user
         job = supabase_service.get_job(job_id, user['id'])
         
         if not job:
@@ -1172,7 +1100,7 @@ def get_job_status(job_id):
 def download_processed_video(job_id):
     """Download processed video file."""
     try:
-        user = request.current_user
+        user = g.current_user
         job = supabase_service.get_job(job_id, user['id'])
         
         if not job:
