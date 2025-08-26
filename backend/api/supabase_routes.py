@@ -639,15 +639,11 @@ def delete_profile_image():
         return jsonify({'error': 'Failed to delete profile image'}), 500
 
 @supabase_bp.route('/auth/usage', methods=['GET'])
-# @supabase_auth_required  # Temporarily disabled for testing
+@supabase_auth_required
 def get_usage_stats():
     """Get user usage statistics."""
     try:
-        # Temporarily get the real user for testing
-        user = supabase_service.get_user_by_email('kush090605@gmail.com')
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-            
+        user = g.current_user
         user_id = user['id']
         subscription_tier = user.get('subscription_tier', 'free')
         
@@ -728,7 +724,7 @@ def get_usage_stats():
 
 # Alias endpoint for usage stats (compatibility)
 @supabase_bp.route('/usage/stats', methods=['GET', 'OPTIONS'])
-# @supabase_auth_required  # Temporarily disabled for testing
+@supabase_auth_required
 def get_usage_stats_alias():
     """Alias for get_usage_stats to support different frontend calls."""
     return get_usage_stats()

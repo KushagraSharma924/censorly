@@ -60,22 +60,45 @@ interface APIKey {
 }
 
 interface UsageStats {
-  videos_processed_this_month: number;
-  videos_limit: number;
-  subscription_tier: string;
-  days_remaining: number;
-  // Additional fields from actual API response
   usage?: {
-    videos_processed_this_month: number;
-    requests_this_month: number;
+    processing?: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    upload?: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    api_keys?: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    general?: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
   };
   limits?: {
-    videos_per_month: number;
-    requests_per_month: number;
+    processing: number;
+    upload: number;
+    max_api_keys: number;
+    general: number;
   };
-  current_period?: any;
-  reset_date?: string;
   tier?: string;
+  reset_date?: string;
+  current_period?: {
+    start: string;
+    end: string;
+  };
+  // Legacy fields for backwards compatibility
+  videos_processed_this_month?: number;
+  videos_limit?: number;
+  subscription_tier?: string;
+  days_remaining?: number;
 }
 
 export const Dashboard: React.FC = () => {
@@ -186,10 +209,18 @@ export const Dashboard: React.FC = () => {
         // Set fallback usage stats to prevent loading states
         setUsageStats({
           usage: {
-            upload: { current: 0, limit: 10 },
-            api_keys: { current: 0, limit: 3 }
+            processing: { current: 0, limit: 10, percentage: 0 },
+            upload: { current: 0, limit: 10, percentage: 0 },
+            api_keys: { current: 0, limit: 3, percentage: 0 },
+            general: { current: 0, limit: 50, percentage: 0 }
           },
-          tier: 'free'
+          tier: 'free',
+          limits: {
+            processing: 10,
+            upload: 10,
+            max_api_keys: 3,
+            general: 50
+          }
         });
       }
 
@@ -671,11 +702,11 @@ export const Dashboard: React.FC = () => {
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-medium">Videos Processed</span>
                           <span className="text-sm text-gray-500">
-                            {usageStats?.videos_processed_this_month || 0} / {usageStats?.videos_limit || 5}
+                            {usageStats?.usage?.processing?.current || 0} / {usageStats?.usage?.processing?.limit || 10}
                           </span>
                         </div>
                         <Progress 
-                          value={usageStats ? (usageStats.videos_processed_this_month / usageStats.videos_limit) * 100 : 0} 
+                          value={usageStats?.usage?.processing?.percentage || 0} 
                         />
                       </div>
                       
@@ -683,10 +714,10 @@ export const Dashboard: React.FC = () => {
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-medium">API Keys</span>
                           <span className="text-sm text-gray-500">
-                            {apiKeys?.length || 0} / 10
+                            {usageStats?.usage?.api_keys?.current || 0} / {usageStats?.usage?.api_keys?.limit || 3}
                           </span>
                         </div>
-                        <Progress value={(apiKeys?.length || 0) * 10} />
+                        <Progress value={usageStats?.usage?.api_keys?.percentage || 0} />
                       </div>
                     </div>
 
