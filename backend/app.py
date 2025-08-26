@@ -52,6 +52,8 @@ def create_app():
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False  # Don't expire access tokens for now
     app.config['JWT_COOKIE_SECURE'] = os.getenv('RENDER_EXTERNAL_URL') is not None
     app.config['JWT_COOKIE_CSRF_PROTECT'] = False  # Disable CSRF for API usage
+    app.config['JWT_ACCESS_COOKIE_NAME'] = 'access_token'  # Use our cookie name
+    app.config['JWT_REFRESH_COOKIE_NAME'] = 'refresh_token'  # Use our refresh cookie name
     app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
     
     # Initialize JWT
