@@ -41,6 +41,7 @@ validate_environment()
 from services.supabase_service import supabase_service
 from api.supabase_routes import supabase_bp
 from api.health import health_bp
+from api.payment_routes import payment_bp
 
 def create_app():
     """Create and configure the Flask application"""
@@ -69,6 +70,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(health_bp)
     app.register_blueprint(supabase_bp)
+    app.register_blueprint(payment_bp)
     
     @app.route('/')
     def home():
