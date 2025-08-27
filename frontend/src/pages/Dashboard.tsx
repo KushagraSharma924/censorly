@@ -147,6 +147,9 @@ export const Dashboard: React.FC = () => {
       console.log('🔄 Fetching dashboard data...');
       
       // Fetch all data in parallel using API service
+      try {
+      console.log('🔄 Fetching dashboard data...');
+      
       const [profileRes, jobsRes, keysRes, usageRes] = await Promise.allSettled([
         apiService.getProfile(),
         apiService.getJobs(),
@@ -154,15 +157,22 @@ export const Dashboard: React.FC = () => {
         apiService.getUsageStats()
       ]);
 
-      console.log('📊 API Results:', { profileRes, jobsRes, keysRes, usageRes });
+      console.log('📊 API Results:', { 
+        profile: profileRes.status, 
+        jobs: jobsRes.status, 
+        keys: keysRes.status, 
+        usage: usageRes.status 
+      });
 
-      // Handle profile data
+      // Handle profile data first (needed for usage fallback)
+      let userProfile = null;
       if (profileRes.status === 'fulfilled') {
         console.log('✅ Profile data:', profileRes.value);
         const profileData = profileRes.value;
         // Profile data is returned directly, not wrapped in .user
         if (profileData && profileData.id) {
           setProfile(profileData);
+          userProfile = profileData;
           localStorage.setItem('user', JSON.stringify(profileData));
           window.dispatchEvent(new CustomEvent('userDataUpdated'));
         }
@@ -207,21 +217,33 @@ export const Dashboard: React.FC = () => {
         setUsageStats(usageData);
       } else {
         console.error('❌ Usage fetch failed:', usageRes.reason);
-        // Set fallback usage stats to prevent loading states
+        
+        // Get user's actual subscription tier from profile for better fallback
+        const userTier = (userProfile?.subscription_tier) || 'free';
+        
+        console.log(`🔄 Setting fallback usage data for tier: ${userTier}`);
+        
+        // Define tier-specific limits for fallback
+        const tierLimits = {
+          'free': { processing: 10, upload: 10, max_api_keys: 3, general: 50 },
+          'basic': { processing: 40, upload: 40, max_api_keys: 10, general: 100 },
+          'premium': { processing: 500, upload: 500, max_api_keys: 50, general: 1000 }
+        };
+        
+        const limits = tierLimits[userTier] || tierLimits['free'];
+        
+        // Set fallback usage stats based on user's actual tier
         setUsageStats({
           usage: {
-            processing: { current: 0, limit: 10, percentage: 0 },
-            upload: { current: 0, limit: 10, percentage: 0 },
-            api_keys: { current: 0, limit: 3, percentage: 0 },
-            general: { current: 0, limit: 50, percentage: 0 }
+            processing: { current: 0, limit: limits.processing, percentage: 0 },
+            upload: { current: 0, limit: limits.upload, percentage: 0 },
+            api_keys: { current: 0, limit: limits.max_api_keys, percentage: 0 },
+            general: { current: 0, limit: limits.general, percentage: 0 }
           },
-          tier: 'free',
-          limits: {
-            processing: 10,
-            upload: 10,
-            max_api_keys: 3,
-            general: 50
-          }
+          tier: userTier,
+          limits: limits,
+          days_remaining: 30,
+          reset_type: 'monthly'
         });
       }
 
@@ -395,8 +417,8 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Subscription</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {usageStats?.tier || 'Free'}
+                    <p className="text-2xl font-bold text-gray-900 capitalize">
+                      {usageStats?.tier || profile?.subscription_tier || 'Free'}
                     </p>
                     <p className="text-sm text-gray-500 mt-2">
                       {(() => {
@@ -707,7 +729,18 @@ export const Dashboard: React.FC = () => {
             <TabsContent value="usage">
               <Card>
                 <CardHeader>
-                  <CardTitle>Usage Statistics</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Usage Statistics</CardTitle>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => fetchDashboardData()}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                      Refresh
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -716,22 +749,28 @@ export const Dashboard: React.FC = () => {
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-medium">Videos Processed</span>
                           <span className="text-sm text-gray-500">
-                            {usageStats?.usage?.processing?.current || 0} / {usageStats?.usage?.processing?.limit || 10}
+                            {usageStats?.usage?.processing?.current || 0} / {usageStats?.usage?.processing?.limit || 0}
                           </span>
                         </div>
                         <Progress 
                           value={usageStats?.usage?.processing?.percentage || 0} 
                         />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Monthly limit resets in {usageStats?.days_remaining || 0} days
+                        </p>
                       </div>
                       
                       <div>
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-medium">API Keys</span>
                           <span className="text-sm text-gray-500">
-                            {usageStats?.usage?.api_keys?.current || 0} / {usageStats?.usage?.api_keys?.limit || 3}
+                            {usageStats?.usage?.api_keys?.current || 0} / {usageStats?.usage?.api_keys?.limit || 0}
                           </span>
                         </div>
                         <Progress value={usageStats?.usage?.api_keys?.percentage || 0} />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {(usageStats?.usage?.api_keys?.limit || 0) - (usageStats?.usage?.api_keys?.current || 0)} slots available
+                        </p>
                       </div>
                     </div>
 
@@ -739,14 +778,30 @@ export const Dashboard: React.FC = () => {
                       <div className="p-4 bg-gray-50 rounded-lg">
                         <h3 className="font-medium mb-2">Current Plan</h3>
                         <div className="flex items-center space-x-2">
-                          {getSubscriptionIcon(usageStats?.subscription_tier || 'free')}
-                          <span className="capitalize">{usageStats?.subscription_tier || 'Free'}</span>
+                          {getSubscriptionIcon(usageStats?.tier || 'free')}
+                          <span className="capitalize font-semibold">{usageStats?.tier || 'Free'}</span>
                         </div>
                         {usageStats?.days_remaining && (
                           <p className="text-sm text-gray-500 mt-1">
-                            {usageStats.days_remaining} days remaining
+                            {usageStats.days_remaining} days remaining in current cycle
                           </p>
                         )}
+                        {usageStats?.reset_type && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Reset type: {usageStats.reset_type}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Plan Benefits */}
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <h3 className="font-medium mb-2">Plan Benefits</h3>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          <li>• {usageStats?.usage?.processing?.limit || 0} videos per month</li>
+                          <li>• {usageStats?.usage?.api_keys?.limit || 0} API keys</li>
+                          <li>• {usageStats?.tier === 'free' ? 'Community' : 'Priority'} support</li>
+                          {usageStats?.tier !== 'free' && <li>• Advanced analytics</li>}
+                        </ul>
                       </div>
                     </div>
                   </div>
