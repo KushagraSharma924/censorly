@@ -683,8 +683,36 @@ def get_usage_stats():
         api_keys_result = supabase_service.client.table("api_keys").select("id").eq("user_id", user_id).eq("is_active", True).execute()
         api_keys_count = len(api_keys_result.data or [])
         
-        # Calculate next month reset date
-        next_month = (month_start + timedelta(days=32)).replace(day=1)
+        # Calculate reset dates and days remaining based on subscription tier
+        if subscription_tier == 'free':
+            # Free tier resets on 1st of every month
+            next_reset = (month_start + timedelta(days=32)).replace(day=1)
+            days_remaining = (next_reset - now).days
+            reset_type = 'monthly'
+        else:
+            # Paid tier resets based on billing cycle (when they paid)
+            # Check for subscription data with billing cycle
+            subscription_data = supabase_service.get_user_subscription(user_id)
+            
+            if subscription_data and subscription_data.get('billing_cycle_start'):
+                # Use billing cycle from subscription
+                billing_start = datetime.fromisoformat(subscription_data['billing_cycle_start'].replace('Z', '+00:00'))
+                # Calculate next billing date (30 days from billing start)
+                current_billing_start = billing_start
+                while current_billing_start < now:
+                    current_billing_start += timedelta(days=30)
+                
+                next_reset = current_billing_start
+                days_remaining = (next_reset - now).days
+                reset_type = 'billing_cycle'
+            else:
+                # Fallback to monthly reset if no billing data
+                next_reset = (month_start + timedelta(days=32)).replace(day=1)
+                days_remaining = (next_reset - now).days
+                reset_type = 'monthly_fallback'
+        
+        # Ensure days_remaining is never negative
+        days_remaining = max(0, days_remaining)
         
         return jsonify({
             'usage': {
@@ -711,10 +739,12 @@ def get_usage_stats():
             },
             'limits': limits,
             'tier': subscription_tier,
-            'reset_date': next_month.isoformat(),
+            'reset_date': next_reset.isoformat(),
+            'days_remaining': days_remaining,
+            'reset_type': reset_type,
             'current_period': {
-                'start': month_start.isoformat(),
-                'end': next_month.isoformat()
+                'start': month_start.isoformat() if subscription_tier == 'free' else (billing_start.isoformat() if 'billing_start' in locals() else month_start.isoformat()),
+                'end': next_reset.isoformat()
             }
         }), 200
         

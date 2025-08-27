@@ -90,6 +90,8 @@ interface UsageStats {
   };
   tier?: string;
   reset_date?: string;
+  days_remaining?: number;
+  reset_type?: 'monthly' | 'billing_cycle' | 'monthly_fallback';
   current_period?: {
     start: string;
     end: string;
@@ -98,7 +100,6 @@ interface UsageStats {
   videos_processed_this_month?: number;
   videos_limit?: number;
   subscription_tier?: string;
-  days_remaining?: number;
 }
 
 export const Dashboard: React.FC = () => {
@@ -397,7 +398,20 @@ export const Dashboard: React.FC = () => {
                     <p className="text-2xl font-bold text-gray-900">
                       {usageStats?.tier || 'Free'}
                     </p>
-                    <p className="text-sm text-gray-500 mt-2">{usageStats?.days_remaining || 0} days remaining</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      {(() => {
+                        const days = usageStats?.days_remaining || 0;
+                        const resetType = usageStats?.reset_type || 'monthly';
+                        
+                        if (resetType === 'monthly') {
+                          return `${days} days until monthly reset`;
+                        } else if (resetType === 'billing_cycle') {
+                          return `${days} days until billing cycle`;
+                        } else {
+                          return `${days} days remaining`;
+                        }
+                      })()}
+                    </p>
                   </div>
                   <BarChart3 className="h-8 w-8 text-gray-400" />
                 </div>
