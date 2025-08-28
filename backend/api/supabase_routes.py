@@ -799,6 +799,13 @@ def create_api_key():
         if not name:
             return jsonify({'error': 'Key name is required'}), 400
         
+        # Validate name length to prevent database errors
+        if len(name) > 100:  # Keep some buffer below the 128 char limit
+            return jsonify({
+                'error': 'API key name too long',
+                'message': 'API key name must be 100 characters or less'
+            }), 400
+        
         # Check API key limit based on subscription tier
         existing_keys = supabase_service.get_user_api_keys(user['id'])
         active_keys = [k for k in existing_keys if k['is_active']]

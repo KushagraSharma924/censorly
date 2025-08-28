@@ -257,6 +257,12 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
+    // Validate name length
+    if (newApiKeyName.trim().length > 100) {
+      alert('API key name must be 100 characters or less.');
+      return;
+    }
+
     // Check free tier limit using usage stats
     const currentApiKeys = usageStats?.usage?.api_keys?.current || apiKeys.length;
     const maxApiKeys = usageStats?.usage?.api_keys?.limit || 3;
@@ -651,8 +657,9 @@ export const Dashboard: React.FC = () => {
                       <div className="flex space-x-4">
                         <input
                           type="text"
-                          placeholder="API Key Name"
+                          placeholder="API Key Name (max 100 characters)"
                           value={newApiKeyName}
+                          maxLength={100}
                           onChange={(e) => setNewApiKeyName(e.target.value)}
                           className="flex-1 px-3 py-2 border rounded-md"
                         />
@@ -661,6 +668,11 @@ export const Dashboard: React.FC = () => {
                           Cancel
                         </Button>
                       </div>
+                      {newApiKeyName.length > 90 && (
+                        <p className="text-sm text-amber-600 mt-2">
+                          {100 - newApiKeyName.length} characters remaining
+                        </p>
+                      )}
                     </div>
                   )}
 
