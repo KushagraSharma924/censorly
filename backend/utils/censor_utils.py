@@ -239,21 +239,3 @@ def add_custom_profanity_words(custom_words: List[str]):
         profanity.add_censor_words([word])
 
 
-def test_profanity_detection(text: str) -> Dict[str, Any]:
-    """
-    Test function to check profanity detection on a given text.
-    
-    Args:
-        text (str): Text to test
-    
-    Returns:
-        Dictionary with detection results
-    """
-    initialize_profanity_filter()
-    
-    return {
-        'original_text': text,
-        'contains_profanity': profanity.contains_profanity(text),
-        'censored_text': profanity.censor(text),
-        'detected_words': detect_profane_words(text)
-    }

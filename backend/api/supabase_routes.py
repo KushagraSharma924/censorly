@@ -394,33 +394,6 @@ def refresh_token():
         logger.error(f"Refresh token error: {str(e)}")
         return jsonify({'error': 'Token refresh failed'}), 500
 
-@supabase_bp.route('/test/profile', methods=['GET'])
-def test_profile():
-    """Test endpoint to return real user data without authentication (for debugging)."""
-    try:
-        # Get the real user from Supabase
-        user = supabase_service.get_user_by_email('kush090605@gmail.com')
-        if user:
-            return jsonify({
-                'user': {
-                    'id': user['id'],
-                    'email': user['email'],
-                    'name': user['full_name'],  # Frontend expects 'name'
-                    'full_name': user['full_name'],
-                    'subscription_tier': user['subscription_tier'],
-                    'subscription_status': 'active' if user.get('is_active', True) else 'inactive',
-                    'videos_processed': user.get('videos_processed', 0),
-                    'total_processing_time': user.get('total_processing_time', 0),
-                    'is_verified': user.get('is_verified', False),
-                    'created_at': user['created_at']
-                }
-            })
-        else:
-            return jsonify({'error': 'User not found'}), 404
-    except Exception as e:
-        logger.error(f"Test profile error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
 @supabase_bp.route('/auth/profile', methods=['GET'])
 @supabase_auth_required
 def get_profile():

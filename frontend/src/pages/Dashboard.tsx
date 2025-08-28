@@ -637,17 +637,23 @@ export const Dashboard: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <CardTitle>API Keys</CardTitle>
                     {/* Free tier: 3 API key limit */}
-                    {apiKeys.length >= 3 ? (
-                      <div className="text-sm text-gray-500">
-                        <p>Free tier limit: 3/3 API keys</p>
-                        <p className="text-xs">Delete a key to create a new one</p>
-                      </div>
-                    ) : (
-                      <Button onClick={() => setShowApiKeyForm(true)}>
-                        <Key className="h-4 w-4 mr-2" />
-                        Create New Key ({apiKeys.length}/3)
-                      </Button>
-                    )}
+                    {(() => {
+                      const currentApiKeys = usageStats?.usage?.api_keys?.current || apiKeys.length;
+                      const maxApiKeys = usageStats?.usage?.api_keys?.limit || 3;
+                      const tierName = usageStats?.tier || profile?.subscription_tier || 'Free';
+                      
+                      return currentApiKeys >= maxApiKeys ? (
+                        <div className="text-sm text-gray-500">
+                          <p>{tierName} tier limit: {currentApiKeys}/{maxApiKeys} API keys</p>
+                          <p className="text-xs">Delete a key to create a new one</p>
+                        </div>
+                      ) : (
+                        <Button onClick={() => setShowApiKeyForm(true)}>
+                          <Key className="h-4 w-4 mr-2" />
+                          Create New Key ({currentApiKeys}/{maxApiKeys})
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </CardHeader>
                 <CardContent>

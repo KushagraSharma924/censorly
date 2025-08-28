@@ -312,16 +312,6 @@ class SupabaseService:
                 "usage_count": 0
             }
             
-            # Debug logging to identify which field is too long
-            logger.info(f"Creating API key with data lengths:")
-            for field, value in api_key_data.items():
-                if isinstance(value, str):
-                    logger.info(f"  {field}: {len(value)} chars")
-                    if len(value) > 128:
-                        logger.error(f"  ❌ {field} exceeds 128 chars: {len(value)}")
-                else:
-                    logger.info(f"  {field}: {type(value)} = {value}")
-            
             result = self.client.table("api_keys").insert(api_key_data).execute()
             
             if result.data:
