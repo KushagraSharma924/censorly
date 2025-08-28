@@ -146,10 +146,6 @@ export const Dashboard: React.FC = () => {
     try {
       console.log('🔄 Fetching dashboard data...');
       
-      // Fetch all data in parallel using API service
-      try {
-      console.log('🔄 Fetching dashboard data...');
-      
       const [profileRes, jobsRes, keysRes, usageRes] = await Promise.allSettled([
         apiService.getProfile(),
         apiService.getJobs(),
