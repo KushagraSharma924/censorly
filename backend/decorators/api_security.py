@@ -128,8 +128,12 @@ def secure_api_key_required(f):
 def _check_rate_limits(key_data: Dict[str, Any], user_data: Dict[str, Any], request_id: str) -> Optional[Tuple[Dict[str, Any], int]]:
     """Check rate limits for this request and return error response if exceeded."""
     try:
-        # Get our rate limiter
-        from services.rate_limiter import rate_limiter
+        # Get our rate limiter (optional service)
+        try:
+            from services.rate_limiter import rate_limiter
+        except ImportError:
+            logger.debug(f"API request [{request_id}] - rate limiter service not available (optional)")
+            return None
         
         if not rate_limiter:
             logger.warning(f"API request [{request_id}] - rate limiter not available")
