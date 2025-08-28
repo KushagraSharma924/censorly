@@ -931,7 +931,13 @@ def create_job():
             
     except Exception as e:
         logger.error(f"Create job error: {str(e)}")
-        return jsonify({'error': 'Failed to create job'}), 500
+        logger.error(f"Error type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'error': 'Failed to create job',
+            'message': str(e) if current_app.debug else 'Internal server error'
+        }), 500
 
 @supabase_bp.route('/jobs/<job_id>', methods=['GET'])
 @supabase_auth_required

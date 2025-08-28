@@ -484,37 +484,6 @@ class SupabaseService:
             logger.error(f"Get user training sessions error: {str(e)}")
             return []
     
-    # Utility Methods
-    def get_plan_limits(self, subscription_tier: str) -> Dict[str, Any]:
-        """Get plan limits based on subscription tier."""
-        plans = {
-            'free': {
-                'monthly_limit': 10,
-                'max_file_size_mb': 100,
-                'max_video_minutes': 5,
-                'features': ['basic_detection']
-            },
-            'basic': {
-                'monthly_limit': 100,
-                'max_file_size_mb': 500,
-                'max_video_minutes': 30,
-                'features': ['basic_detection', 'api_access']
-            },
-            'pro': {
-                'monthly_limit': 500,
-                'max_file_size_mb': 1000,
-                'max_video_minutes': 60,
-                'features': ['advanced_detection', 'api_access', 'priority_processing']
-            },
-            'enterprise': {
-                'monthly_limit': -1,  # Unlimited
-                'max_file_size_mb': 5000,
-                'max_video_minutes': 180,
-                'features': ['all_features', 'dedicated_support']
-            }
-        }
-        return plans.get(subscription_tier, plans['free'])
-
 
 # Global service instance
 _supabase_service: Optional[SupabaseService] = None

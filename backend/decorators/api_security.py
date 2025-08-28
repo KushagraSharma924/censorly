@@ -98,6 +98,10 @@ def secure_api_key_required(f):
         request.current_api_key = key_data
         request.request_id = request_id
         
+        # Also set in g for compatibility with existing code
+        g.current_user = user_data
+        g.current_api_key = key_data
+        
         # Execute the endpoint function
         try:
             response = f(*args, **kwargs)
