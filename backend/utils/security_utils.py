@@ -162,8 +162,15 @@ def generate_secure_api_key(prefix: str = "apf") -> Tuple[str, str, str]:
     raw_key = f"{prefix}_{secrets.token_urlsafe(32)}"
     key_prefix = raw_key[:10]
     
-    # Hash the key for secure storage
-    key_hash = generate_password_hash(raw_key)
+    # Hash the key for secure storage using a method that ensures < 128 chars
+    # Using pbkdf2:sha1 which is shorter but still secure for API keys
+    key_hash = generate_password_hash(raw_key, method='pbkdf2:sha1')
+    
+    # Ensure the hash is within database limits
+    if len(key_hash) > 128:
+        # Fallback to a basic SHA-256 hash if somehow the password hash is too long
+        import hashlib
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
     
     return raw_key, key_prefix, key_hash
 

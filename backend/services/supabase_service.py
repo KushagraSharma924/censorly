@@ -285,8 +285,22 @@ class SupabaseService:
         try:
             from utils.security_utils import generate_secure_api_key
             
+            # Validate inputs to prevent database constraint violations
+            if len(user_id) > 128:
+                logger.error(f"User ID too long: {len(user_id)} chars")
+                return {"success": False, "error": "User ID exceeds maximum length"}
+            
+            if len(name) > 100:
+                logger.error(f"API key name too long: {len(name)} chars")
+                return {"success": False, "error": "API key name exceeds maximum length"}
+            
             # Generate secure API key with our utility function
             raw_key, key_prefix, key_hash = generate_secure_api_key("apf")
+            
+            # Additional validation for generated key components
+            if len(key_hash) > 128:
+                logger.error(f"Generated key hash too long: {len(key_hash)} chars")
+                return {"success": False, "error": "Generated key hash exceeds database limit"}
             
             api_key_data = {
                 "id": str(uuid.uuid4()),
@@ -297,6 +311,16 @@ class SupabaseService:
                 "is_active": True,
                 "usage_count": 0
             }
+            
+            # Debug logging to identify which field is too long
+            logger.info(f"Creating API key with data lengths:")
+            for field, value in api_key_data.items():
+                if isinstance(value, str):
+                    logger.info(f"  {field}: {len(value)} chars")
+                    if len(value) > 128:
+                        logger.error(f"  ❌ {field} exceeds 128 chars: {len(value)}")
+                else:
+                    logger.info(f"  {field}: {type(value)} = {value}")
             
             result = self.client.table("api_keys").insert(api_key_data).execute()
             
@@ -310,8 +334,15 @@ class SupabaseService:
             return {"success": False, "error": "API key creation failed"}
             
         except Exception as e:
-            logger.error(f"Create API key error: {str(e)}")
-            return {"success": False, "error": str(e)}
+            error_msg = str(e)
+            logger.error(f"Create API key error: {error_msg}")
+            
+            # If it's a database constraint error, provide more specific feedback
+            if "value too long for type character varying(128)" in error_msg:
+                logger.error("Database field length constraint violated")
+                return {"success": False, "error": "One of the API key fields exceeds the maximum allowed length"}
+            
+            return {"success": False, "error": error_msg}
     
     def verify_api_key(self, raw_key: str) -> Optional[Dict[str, Any]]:
         """Verify an API key and return the key data if valid using constant-time comparison."""
