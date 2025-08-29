@@ -273,7 +273,7 @@ def login():
                 max_age=max_age_access,
                 httponly=True,
                 secure=is_production,  # Only secure in production
-                samesite='None' if is_production else 'Strict'  # None required for cross-origin in production
+                samesite='Lax'  # Use Lax for better cross-origin compatibility
             )
             
             if result.get('refresh_token'):
@@ -283,7 +283,7 @@ def login():
                     max_age=max_age_refresh,
                     httponly=True,
                     secure=is_production,
-                    samesite='None' if is_production else 'Strict'
+                    samesite='Lax'  # Use Lax for better cross-origin compatibility
                 )
                 
             return response, 200
