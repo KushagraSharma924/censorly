@@ -135,7 +135,9 @@ def handle_payment_success(webhook_data):
         
         # If no plan_id, determine from amount
         if not plan_id:
-            if amount == 399:
+            if amount == 1:
+                plan_id = 'test'
+            elif amount == 399:
                 plan_id = 'upgradebasic'
             elif amount == 999:
                 plan_id = 'upgradepro'
