@@ -19,6 +19,11 @@ payment_bp = Blueprint('payment', __name__, url_prefix='/api/payment')
 
 # Plan mapping
 PLAN_MAPPING = {
+    'test': {
+        'tier': 'basic',
+        'duration_days': 1,
+        'price': 1  # ₹1 for testing
+    },
     'upgradebasic': {
         'tier': 'basic',
         'duration_days': 30,
