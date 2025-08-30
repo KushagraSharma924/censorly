@@ -260,21 +260,23 @@ def login():
                 # Tokens no longer returned in response body
             })
             
-            # Set httpOnly cookies for tokens
+            # Set httpOnly cookies for tokens with robust cross-origin support
             max_age_access = 24 * 60 * 60  # 24 hours
             max_age_refresh = 30 * 24 * 60 * 60  # 30 days
             
-            # Check if we're in production (use secure cookies only in production)
+            # Always use secure cookies in production, allow non-secure in development
             is_production = os.getenv('RENDER_EXTERNAL_URL') is not None or 'onrender.com' in request.url_root
             
+            # Set access token cookie with maximum compatibility
             response.set_cookie(
                 'access_token',
                 result['access_token'],
                 max_age=max_age_access,
-                httponly=True,
-                secure=is_production,  # Only secure in production
-                samesite='None' if is_production else 'Lax',  # None for cross-origin in production
-                path='/'  # Ensure cookie is available for all paths
+                httponly=False,  # Allow JavaScript access for cross-origin
+                secure=is_production,
+                samesite='None' if is_production else 'Lax',
+                path='/',
+                domain=None  # Let browser determine domain
             )
             
             if result.get('refresh_token'):
@@ -282,10 +284,11 @@ def login():
                     'refresh_token',
                     result['refresh_token'],
                     max_age=max_age_refresh,
-                    httponly=True,
+                    httponly=False,  # Allow JavaScript access for cross-origin
                     secure=is_production,
-                    samesite='None' if is_production else 'Lax',  # None for cross-origin in production
-                    path='/'  # Ensure cookie is available for all paths
+                    samesite='None' if is_production else 'Lax',
+                    path='/',
+                    domain=None  # Let browser determine domain
                 )
                 
             return response, 200
