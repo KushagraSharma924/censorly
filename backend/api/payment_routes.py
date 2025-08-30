@@ -147,21 +147,23 @@ def handle_payment_success(webhook_data):
                 logger.error(f"Cannot determine plan from amount: {amount}")
                 return jsonify({'error': 'Unknown payment amount'}), 400
         
+        logger.info(f"Processing upgrade: email={user_email}, plan={plan_id}, amount={amount}")
+        
         # Get plan details
         plan_info = PLAN_MAPPING.get(plan_id)
         if not plan_info:
             logger.error(f"Unknown plan_id: {plan_id}")
             return jsonify({'error': 'Unknown plan'}), 400
         
-        # Verify payment amount matches plan price
-        if abs(amount - plan_info['price']) > 1:  # Allow 1 rupee difference for rounding
-            logger.warning(f"Amount mismatch: expected {plan_info['price']}, got {amount}. Proceeding anyway.")
+        logger.info(f"Plan info: {plan_info}")
         
         # Get user
         user = supabase_service.get_user_by_email(user_email)
         if not user:
             logger.error(f"User not found: {user_email}")
             return jsonify({'error': 'User not found'}), 404
+            
+        logger.info(f"Found user: {user['id']}, current tier: {user.get('subscription_tier', 'free')}")
         
         # Upgrade user subscription
         upgrade_result = upgrade_user_subscription(
