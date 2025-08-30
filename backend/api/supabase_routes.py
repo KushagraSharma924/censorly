@@ -47,8 +47,34 @@ def supabase_auth_required(f):
         try:
             from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity, get_jwt
             
-            # Verify JWT token in request (handles cookies automatically)
-            verify_jwt_in_request(locations=['cookies'])
+            # Try multiple authentication methods for better compatibility
+            auth_success = False
+            
+            # Method 1: Try cookies first
+            try:
+                verify_jwt_in_request(locations=['cookies'])
+                auth_success = True
+            except:
+                pass
+            
+            # Method 2: Try Authorization header if cookies failed
+            if not auth_success:
+                try:
+                    verify_jwt_in_request(locations=['headers'])
+                    auth_success = True
+                except:
+                    pass
+            
+            # Method 3: Try JSON body if both failed
+            if not auth_success:
+                try:
+                    verify_jwt_in_request(locations=['json'])
+                    auth_success = True
+                except:
+                    pass
+            
+            if not auth_success:
+                return jsonify({'error': 'Authentication required'}), 401
             
             # Get user identity from token
             user_id = get_jwt_identity()
@@ -248,7 +274,7 @@ def login():
         
         if result['success']:
             logger.info(f"User logged in: {email}")
-            # Create response
+            # Create response with tokens in body for fallback
             response = jsonify({
                 'message': 'Login successful',
                 'user': {
@@ -256,8 +282,9 @@ def login():
                     'email': result['user']['email'],
                     'full_name': result['user']['full_name'],
                     'subscription_tier': result['user']['subscription_tier']
-                }
-                # Tokens no longer returned in response body
+                },
+                'access_token': result['access_token'],  # Include token in response
+                'refresh_token': result.get('refresh_token')  # Include refresh token
             })
             
             # Set httpOnly cookies for tokens with robust cross-origin support
