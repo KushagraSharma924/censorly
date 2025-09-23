@@ -361,15 +361,32 @@ export const Dashboard: React.FC = () => {
                 Welcome back, {profile?.full_name || profile?.email || 'User'}
               </p>
             </div>
-            <Button 
-              onClick={fetchDashboardData} 
-              disabled={refreshing}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </Button>
+            <div className="flex items-center space-x-3">
+              {/* Upgrade Button - Only show for non-premium users */}
+              {usageStats?.tier !== 'pro' && usageStats?.tier !== 'enterprise' && (
+                <Button 
+                  onClick={() => window.open('/pricing', '_blank')}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center space-x-2"
+                >
+                  <Crown className="h-4 w-4" />
+                  <span className="font-semibold">Upgrade Now</span>
+                  <div className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-bold">
+                    {usageStats?.tier === 'basic' ? 'PRO' : 'BASIC'}
+                  </div>
+                </Button>
+              )}
+              
+              {/* Refresh Button */}
+              <Button 
+                onClick={fetchDashboardData} 
+                disabled={refreshing}
+                variant="outline"
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </Button>
+            </div>
           </div>
 
           {/* Quick Stats */}
