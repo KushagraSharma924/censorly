@@ -922,8 +922,8 @@ def create_job():
         data = request.get_json()
         
         # Validate required fields
-        if not data.get('original_filename'):
-            return jsonify({'error': 'Original filename is required'}), 400
+        if not data.get('filename') and not data.get('original_filename'):
+            return jsonify({'error': 'Filename is required'}), 400
         
         # Check plan limits
         plan_limits = supabase_service.get_plan_limits(user['subscription_tier'])
@@ -941,7 +941,7 @@ def create_job():
         
         # Create job
         job_data = {
-            'original_filename': data.get('original_filename'),
+            'filename': data.get('filename') or data.get('original_filename'),
             'file_size': data.get('file_size'),
             'duration': data.get('duration'),
             'censoring_mode': data.get('censoring_mode', 'beep'),
@@ -1077,9 +1077,7 @@ def process_video():
         
         # Create processing job
         job_data = {
-            'original_filename': file.filename,  # Original filename from request
-            'stored_filename': safe_filename,
-            'file_path': str(file_path),
+            'filename': file.filename,  # Use consistent field name
             'file_size': file_size,
             'censoring_mode': censoring_mode,
             'profanity_threshold': profanity_threshold,
@@ -1164,7 +1162,7 @@ def download_processed_video(job_id):
         return send_file(
             processed_file_path,
             as_attachment=True,
-            download_name=f"processed_{job['original_filename']}"
+            download_name=f"processed_{job['filename']}"
         )
         
     except Exception as e:
