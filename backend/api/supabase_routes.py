@@ -1269,14 +1269,9 @@ def process_video():
 @supabase_bp.route('/jobs/<job_id>/status', methods=['GET', 'OPTIONS'])
 def get_job_status(job_id):
     """Get detailed job status and progress."""
-    # Handle preflight OPTIONS request
+    # Handle preflight OPTIONS request - let global CORS handler manage headers
     if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', 'https://censorly.vercel.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
+        return make_response(), 200
     
     # Apply authentication for actual GET requests
     try:
@@ -1301,29 +1296,20 @@ def get_job_status(job_id):
                 pass
         
         if not auth_success:
-            response = jsonify({'error': 'Authentication required'})
-            response.headers.add('Access-Control-Allow-Origin', 'https://censorly.vercel.app')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            return response, 401
+            return jsonify({'error': 'Authentication required'}), 401
         
         # Get user identity
         user_id = get_jwt_identity()
         if not user_id:
-            response = jsonify({'error': 'Invalid token'})
-            response.headers.add('Access-Control-Allow-Origin', 'https://censorly.vercel.app')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            return response, 401
+            return jsonify({'error': 'Invalid token'}), 401
         
         # Get job
         job = supabase_service.get_job(job_id, user_id)
         
         if not job:
-            response = jsonify({'error': 'Job not found'})
-            response.headers.add('Access-Control-Allow-Origin', 'https://censorly.vercel.app')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            return response, 404
+            return jsonify({'error': 'Job not found'}), 404
         
-        response = jsonify({
+        return jsonify({
             'job_id': job['id'],
             'status': job['status'],
             'progress': job.get('progress', 0),
@@ -1331,17 +1317,11 @@ def get_job_status(job_id):
             'updated_at': job.get('updated_at'),
             'error_message': job.get('error_message'),
             'result': job.get('result')
-        })
-        response.headers.add('Access-Control-Allow-Origin', 'https://censorly.vercel.app')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response, 200
+        }), 200
         
     except Exception as e:
         logger.error(f"Get job status error: {str(e)}")
-        response = jsonify({'error': 'Failed to get job status'})
-        response.headers.add('Access-Control-Allow-Origin', 'https://censorly.vercel.app')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response, 500
+        return jsonify({'error': 'Failed to get job status'}), 500
 
 @supabase_bp.route('/download/<job_id>', methods=['GET', 'OPTIONS'])
 @supabase_auth_required
