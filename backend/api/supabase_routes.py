@@ -991,6 +991,96 @@ def get_job(job_id):
 
 # ===== VIDEO PROCESSING ENDPOINTS =====
 
+def process_video_async(job_id, storage_path, bucket_name, censoring_mode, profanity_threshold, languages, whisper_model):
+    """
+    Asynchronous video processing function.
+    Downloads video from storage, processes it, and uploads result back.
+    """
+    import tempfile
+    import whisper
+    from utils.audio_utils import extract_audio, merge_audio_to_video
+    from utils.censor_utils import detect_and_censor_audio
+    
+    try:
+        # Update job status to processing
+        supabase_service.update_job(job_id, {
+            'status': 'processing',
+            'progress': 10
+        })
+        
+        # Create temporary directory for processing
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = Path(temp_dir)
+            
+            # Download video from storage
+            video_data = supabase_service.client.storage.from_(bucket_name).download(storage_path)
+            if not video_data:
+                raise Exception("Failed to download video from storage")
+            
+            input_video_path = temp_dir_path / "input_video.mp4"
+            with open(input_video_path, 'wb') as f:
+                f.write(video_data)
+            
+            supabase_service.update_job(job_id, {'progress': 20})
+            
+            # Extract audio from video
+            audio_path = temp_dir_path / "audio.wav"
+            extract_audio(str(input_video_path), str(audio_path))
+            
+            supabase_service.update_job(job_id, {'progress': 40})
+            
+            # Transcribe audio using Whisper
+            model = whisper.load_model(whisper_model)
+            result = model.transcribe(str(audio_path), language=languages[0] if languages else 'en')
+            
+            supabase_service.update_job(job_id, {'progress': 60})
+            
+            # Detect and censor profanity in audio
+            censored_audio_path = temp_dir_path / "censored_audio.wav"
+            censored_segments_count = detect_and_censor_audio(
+                str(audio_path), 
+                result, 
+                str(censored_audio_path), 
+                censoring_mode
+            )
+            
+            # Merge censored audio back to video
+            output_video_path = temp_dir_path / "output_video.mp4" 
+            merge_audio_to_video(str(input_video_path), str(censored_audio_path), str(output_video_path))
+            
+            supabase_service.update_job(job_id, {'progress': 80})
+            
+            # Upload processed video to storage
+            processed_bucket = 'processed-videos'
+            processed_storage_path = f"processed_{storage_path}"
+            
+            with open(output_video_path, 'rb') as f:
+                processed_data = f.read()
+            
+            upload_result = supabase_service.client.storage.from_(processed_bucket).upload(
+                processed_storage_path, processed_data
+            )
+            
+            if hasattr(upload_result, 'error') and upload_result.error:
+                raise Exception(f"Failed to upload processed video: {upload_result.error}")
+            
+            # Update job as completed
+            supabase_service.update_job(job_id, {
+                'status': 'completed',
+                'progress': 100,
+                'output_path': processed_storage_path,
+                'profane_segments_count': censored_segments_count,
+                'completed_at': datetime.utcnow().isoformat()
+            })
+            
+    except Exception as e:
+        logger.error(f"Video processing failed for job {job_id}: {str(e)}")
+        supabase_service.update_job(job_id, {
+            'status': 'failed',
+            'error_message': str(e),
+            'completed_at': datetime.utcnow().isoformat()
+        })
+
 @supabase_bp.route('/process-video', methods=['POST'])
 @csrf_protect
 @supabase_auth_required
@@ -1043,6 +1133,14 @@ def process_video():
         
         if not 0.0 <= profanity_threshold <= 1.0:
             return jsonify({'error': 'Profanity threshold must be between 0.0 and 1.0'}), 400
+        
+        # Determine whisper model based on subscription tier
+        subscription_tier = user.get('subscription_tier', 'free')
+        whisper_model = 'base'  # Default model
+        if subscription_tier == 'premium':
+            whisper_model = 'large-v2'  # Better accuracy for premium users
+        elif subscription_tier == 'basic':
+            whisper_model = 'medium'    # Balanced for basic users
         
         # Check subscription limits
         plan_limits = supabase_service.get_plan_limits(user['subscription_tier'])
@@ -1118,15 +1216,31 @@ def process_video():
         
         job_id = result['job']['id']
         
-        # TODO: Queue background processing task
-        # For now, return job_id for polling
-        
-        logger.info(f"Video upload successful. Job ID: {job_id}, User: {user['email']}")
+        # Start background processing task
+        try:
+            # For now, start processing immediately (can be moved to queue later)
+            import threading
+            processing_thread = threading.Thread(
+                target=process_video_async,
+                args=(job_id, storage_path, bucket_name, censoring_mode, profanity_threshold, languages, whisper_model)
+            )
+            processing_thread.daemon = True
+            processing_thread.start()
+            
+            logger.info(f"Video processing started. Job ID: {job_id}, User: {user['email']}")
+            
+        except Exception as thread_error:
+            logger.error(f"Failed to start processing thread: {thread_error}")
+            # Update job status to failed
+            supabase_service.update_job(job_id, {
+                'status': 'failed',
+                'error_message': 'Failed to start processing'
+            })
         
         return jsonify({
             'message': 'Video uploaded successfully',
             'job_id': job_id,
-            'status': 'pending',
+            'status': 'processing',
             'estimated_processing_time': '2-5 minutes'
         }), 202
         
