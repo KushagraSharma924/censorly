@@ -1094,15 +1094,14 @@ def process_video():
             logger.error(f"Storage upload exception: {str(storage_error)}")
             return jsonify({'error': 'Failed to upload file to storage'}), 500
 
-        # Create processing job with minimal database schema
+        # Create processing job matching existing database schema
         job_data = {
-            'storage_path': storage_path,
-            'original_name': file.filename,
+            'input_path': storage_path,  # Use existing column name
+            'original_filename': file.filename,  # Use existing column name
             'file_size': file_size,
             'censoring_mode': censoring_mode,
             'profanity_threshold': profanity_threshold,
             'languages': json.dumps(languages),
-            'whisper_model': whisper_model,
             'status': 'pending',
             'created_at': datetime.utcnow().isoformat()
         }
@@ -1174,9 +1173,8 @@ def download_processed_video(job_id):
         if job['status'] != 'completed':
             return jsonify({'error': 'Job not completed yet'}), 400
         
-        # Get processed file from Supabase storage
-        result = job.get('result', {})
-        processed_storage_path = result.get('processed_storage_path')
+        # Get processed file from Supabase storage using existing schema
+        processed_storage_path = job.get('output_path')  # Use existing column name
         
         if not processed_storage_path:
             return jsonify({'error': 'Processed file not found'}), 404
@@ -1195,7 +1193,7 @@ def download_processed_video(job_id):
                 io.BytesIO(file_response),
                 mimetype='video/mp4',
                 headers={
-                    'Content-Disposition': f'attachment; filename=processed_{job.get("original_name", "video.mp4")}'
+                    'Content-Disposition': f'attachment; filename=processed_{job.get("original_filename", "video.mp4")}'
                 }
             )
             

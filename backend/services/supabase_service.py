@@ -500,11 +500,15 @@ class SupabaseService:
             for bucket_name in required_buckets:
                 if bucket_name not in existing_names:
                     try:
-                        self.client.storage.create_bucket(bucket_name, {
-                            'public': False,  # Private buckets for security
-                            'file_size_limit': 1024 * 1024 * 500,  # 500MB limit
-                            'allowed_mime_types': ['video/mp4', 'video/avi', 'video/mov', 'video/mkv']
-                        })
+                        # Use correct bucket creation parameters
+                        self.client.storage.create_bucket(
+                            bucket_name,
+                            options={
+                                'public': False,  # Private buckets for security
+                                'file_size_limit': 524288000,  # 500MB in bytes
+                                'allowed_mime_types': ['video/mp4', 'video/avi', 'video/mov', 'video/mkv', 'video/webm']
+                            }
+                        )
                         logger.info(f"Created storage bucket: {bucket_name}")
                     except Exception as create_error:
                         logger.warning(f"Failed to create bucket {bucket_name}: {create_error}")
