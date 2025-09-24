@@ -17,6 +17,8 @@ import {
 import { VideoProcessor } from '@/lib/video-processor';
 import { useAuth } from '@/contexts/auth-context';
 import { apiService } from '@/lib/api-service';
+import { API_ENDPOINTS, buildApiUrl } from '@/config/api';
+import { authService } from '@/lib/auth-service';
 
 interface UploadedFile extends FileStatusItem {}
 
@@ -105,10 +107,16 @@ const UploadPage: React.FC = () => {
 
   const uploadFile = async (fileData: UploadedFile) => {
     try {
-
+      const token = authService.getToken();
+      
       console.log('Starting upload for:', fileData.file.name);
       console.log('Token exists:', !!token);
       console.log('API URL:', buildApiUrl(API_ENDPOINTS.VIDEO.PROCESS));
+
+      if (!token) {
+        updateFileStatus(fileData.id, 'failed', 'Not authenticated - please log in');
+        return;
+      }
 
       const formData = new FormData();
       formData.append('video_file', fileData.file); // Changed from 'video' to 'video_file'
@@ -183,7 +191,7 @@ const UploadPage: React.FC = () => {
 
   const pollJobStatus = async (fileId: string, jobId: string) => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = authService.getToken();
       // This now uses the corrected endpoint with /status
       const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.STATUS(jobId)), {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -237,7 +245,7 @@ const UploadPage: React.FC = () => {
 
   const downloadFile = async (jobId: string, filename: string) => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = authService.getToken();
       const response = await fetch(buildApiUrl(API_ENDPOINTS.VIDEO.DOWNLOAD(jobId)), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
