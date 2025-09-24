@@ -31,8 +31,23 @@ const UploadPage: React.FC = () => {
   const checkUsageLimits = async (): Promise<boolean> => {
     try {
       const usageStats = await apiService.getUsageStats();
-      const processed = usageStats?.usage?.videos_processed_this_month || usageStats?.videos_processed_this_month || 0;
-      const limit = usageStats?.limits?.videos_per_month || usageStats?.videos_limit || 0;
+      
+      // Handle different response formats from backend
+      const processed = usageStats?.usage?.upload?.current || 
+                       usageStats?.usage?.processing?.current || 
+                       usageStats?.usage?.videos_processed_this_month || 
+                       usageStats?.videos_processed_this_month || 0;
+                       
+      const limit = usageStats?.usage?.upload?.limit || 
+                   usageStats?.usage?.processing?.limit || 
+                   usageStats?.limits?.videos_per_month || 
+                   usageStats?.videos_limit || 0;
+      
+      // Don't block if limit is 0 or not properly set (likely a data issue)
+      if (limit <= 0) {
+        console.warn('Upload limit not properly configured, allowing upload');
+        return true;
+      }
       
       if (processed >= limit) {
         alert(`Monthly video processing limit reached! You have processed ${processed}/${limit} videos this month. Please upgrade your plan or wait until next month to continue processing videos.`);
