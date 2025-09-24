@@ -129,8 +129,13 @@ class AuthService {
       }
     );
 
-    // Backend uses httpOnly cookies, so we just track authentication state
-    this.setToken('authenticated');
+    // Store the actual JWT token from response for Bearer auth
+    if (response.access_token) {
+      this.setToken(response.access_token);
+    } else {
+      // Fallback - backend uses httpOnly cookies, so we just track authentication state
+      this.setToken('authenticated');
+    }
 
     // Store user data
     if (response.user) {
