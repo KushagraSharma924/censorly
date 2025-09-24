@@ -3,7 +3,7 @@ Supabase-based API Routes for AI Profanity Filter SaaS Platform
 Complete replacement for SQLAlchemy-based routes using pure Supabase.
 """
 
-from flask import Blueprint, request, jsonify, current_app, send_file, make_response, g
+from flask import Blueprint, request, jsonify, current_app, send_file, make_response, g, Response
 from functools import wraps
 import logging
 from datetime import datetime, timedelta
@@ -12,6 +12,7 @@ import json
 import time
 import os
 import shutil
+import io
 from pathlib import Path
 from collections import defaultdict
 from werkzeug.utils import secure_filename
@@ -1070,18 +1071,38 @@ def process_video():
         safe_filename = f"{timestamp}_{secure_name}"
         file_path = upload_dir / safe_filename
         
-        # Compute file hash for integrity verification
-        file_hash = compute_file_hash(file)
+        # Store file in Supabase storage bucket instead of local filesystem
+        bucket_name = 'video-uploads'
+        file_extension = os.path.splitext(secure_name)[1]
+        storage_path = f"{user['id']}/{timestamp}_{uuid.uuid4().hex[:8]}{file_extension}"
         
-        file.save(str(file_path))
-        
-        # Create processing job
+        try:
+            # Upload file to Supabase storage
+            file_data = file.read()
+            
+            storage_result = supabase_service.client.storage.from_(bucket_name).upload(
+                path=storage_path,
+                file=file_data,
+                file_options={"content-type": file.content_type or 'video/mp4'}
+            )
+            
+            if hasattr(storage_result, 'error') and storage_result.error:
+                logger.error(f"Storage upload error: {storage_result.error}")
+                return jsonify({'error': 'Failed to upload file to storage'}), 500
+                
+        except Exception as storage_error:
+            logger.error(f"Storage upload exception: {str(storage_error)}")
+            return jsonify({'error': 'Failed to upload file to storage'}), 500
+
+        # Create processing job with minimal database schema
         job_data = {
-            'filename': file.filename,  # Use consistent field name
+            'storage_path': storage_path,
+            'original_name': file.filename,
             'file_size': file_size,
             'censoring_mode': censoring_mode,
             'profanity_threshold': profanity_threshold,
             'languages': json.dumps(languages),
+            'whisper_model': whisper_model,
             'status': 'pending',
             'created_at': datetime.utcnow().isoformat()
         }
@@ -1089,9 +1110,11 @@ def process_video():
         result = supabase_service.create_job(user['id'], job_data)
         
         if not result['success']:
-            # Clean up uploaded file on failure
-            if file_path.exists():
-                file_path.unlink()
+            # Clean up uploaded file on failure from storage
+            try:
+                supabase_service.client.storage.from_(bucket_name).remove([storage_path])
+            except Exception as cleanup_error:
+                logger.error(f"Failed to cleanup storage file: {cleanup_error}")
             return jsonify({'error': result['error']}), 500
         
         job_id = result['job']['id']
@@ -1151,19 +1174,34 @@ def download_processed_video(job_id):
         if job['status'] != 'completed':
             return jsonify({'error': 'Job not completed yet'}), 400
         
-        # Check if processed file exists
+        # Get processed file from Supabase storage
         result = job.get('result', {})
-        processed_file_path = result.get('processed_file_path')
+        processed_storage_path = result.get('processed_storage_path')
         
-        if not processed_file_path or not os.path.exists(processed_file_path):
+        if not processed_storage_path:
             return jsonify({'error': 'Processed file not found'}), 404
         
-        # Return file for download
-        return send_file(
-            processed_file_path,
-            as_attachment=True,
-            download_name=f"processed_{job['filename']}"
-        )
+        try:
+            # Get file from Supabase storage
+            bucket_name = 'processed-videos'
+            file_response = supabase_service.client.storage.from_(bucket_name).download(processed_storage_path)
+            
+            if not file_response:
+                return jsonify({'error': 'Failed to download file from storage'}), 404
+            
+            # Create a temporary response with the file data
+            
+            return Response(
+                io.BytesIO(file_response),
+                mimetype='video/mp4',
+                headers={
+                    'Content-Disposition': f'attachment; filename=processed_{job.get("original_name", "video.mp4")}'
+                }
+            )
+            
+        except Exception as storage_error:
+            logger.error(f"Storage download error: {storage_error}")
+            return jsonify({'error': 'Failed to retrieve processed file'}), 500
         
     except Exception as e:
         logger.error(f"Download error: {str(e)}")

@@ -46,6 +46,9 @@ class SupabaseService:
         # Use service key for database operations (bypasses RLS)
         self.client = create_client(self.supabase_url, self.supabase_service_key)
         logger.info("Supabase service initialized with service key")
+        
+        # Ensure storage buckets exist
+        self.ensure_storage_buckets()
     
     # User Management
     def create_user(self, email: str, password: str, full_name: str = None) -> Dict[str, Any]:
@@ -483,6 +486,31 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Get user training sessions error: {str(e)}")
             return []
+    
+    def ensure_storage_buckets(self):
+        """Ensure required storage buckets exist."""
+        try:
+            required_buckets = ['video-uploads', 'processed-videos']
+            
+            # Get existing buckets
+            existing_buckets = self.client.storage.list_buckets()
+            existing_names = [bucket.name for bucket in existing_buckets] if existing_buckets else []
+            
+            # Create missing buckets
+            for bucket_name in required_buckets:
+                if bucket_name not in existing_names:
+                    try:
+                        self.client.storage.create_bucket(bucket_name, {
+                            'public': False,  # Private buckets for security
+                            'file_size_limit': 1024 * 1024 * 500,  # 500MB limit
+                            'allowed_mime_types': ['video/mp4', 'video/avi', 'video/mov', 'video/mkv']
+                        })
+                        logger.info(f"Created storage bucket: {bucket_name}")
+                    except Exception as create_error:
+                        logger.warning(f"Failed to create bucket {bucket_name}: {create_error}")
+            
+        except Exception as e:
+            logger.error(f"Storage bucket initialization error: {str(e)}")
     
 
 # Global service instance
