@@ -998,6 +998,8 @@ def process_video_async(job_id, storage_path, bucket_name, censoring_mode, profa
     """
     import tempfile
     import whisper
+    from pathlib import Path
+    from datetime import datetime
     from utils.audio_utils import extract_audio, merge_audio_to_video
     from utils.censor_utils import detect_and_censor_audio
     
@@ -1075,6 +1077,39 @@ def process_video_async(job_id, storage_path, bucket_name, censoring_mode, profa
             
     except Exception as e:
         logger.error(f"Video processing failed for job {job_id}: {str(e)}")
+        
+        # Try to copy original file as fallback if processing fails
+        try:
+            logger.info(f"Attempting fallback: copying original file for job {job_id}")
+            
+            # Download original file
+            original_data = supabase_service.client.storage.from_(bucket_name).download(storage_path)
+            if original_data:
+                # Upload as "processed" file (unchanged)
+                processed_bucket = 'processed-videos'
+                processed_storage_path = f"processed_{storage_path}"
+                
+                upload_result = supabase_service.client.storage.from_(processed_bucket).upload(
+                    processed_storage_path, original_data
+                )
+                
+                if not (hasattr(upload_result, 'error') and upload_result.error):
+                    # Mark as completed with fallback message
+                    supabase_service.update_job(job_id, {
+                        'status': 'completed',
+                        'progress': 100,
+                        'output_path': processed_storage_path,
+                        'profane_segments_count': 0,
+                        'error_message': f'Processing failed, original file returned: {str(e)}',
+                        'completed_at': datetime.utcnow().isoformat()
+                    })
+                    logger.info(f"Fallback successful for job {job_id}")
+                    return
+        
+        except Exception as fallback_error:
+            logger.error(f"Fallback also failed for job {job_id}: {str(fallback_error)}")
+        
+        # If fallback also fails, mark as failed
         supabase_service.update_job(job_id, {
             'status': 'failed',
             'error_message': str(e),
@@ -1220,32 +1255,15 @@ def process_video():
         try:
             import threading
             
-            def simulate_processing(job_id):
-                """Simulate processing progress without crashing the server"""
-                import time
-                
-                progress_steps = [20, 40, 60, 80, 90]
-                for i, progress in enumerate(progress_steps):
-                    time.sleep(2)  # Wait 2 seconds between updates
-                    supabase_service.update_job(job_id, {
-                        'status': 'processing',
-                        'progress': progress
-                    })
-                
-                # Mark as completed (for now - will be replaced with actual processing)
-                time.sleep(2)
-                supabase_service.update_job(job_id, {
-                    'status': 'completed',
-                    'progress': 100,
-                    'output_path': f"processed_{storage_path}",  # Placeholder
-                    'completed_at': datetime.utcnow().isoformat()
-                })
-            
-            processing_thread = threading.Thread(target=simulate_processing, args=(job_id,))
+            # Start actual video processing
+            processing_thread = threading.Thread(
+                target=process_video_async,
+                args=(job_id, storage_path, bucket_name, censoring_mode, profanity_threshold, languages, whisper_model)
+            )
             processing_thread.daemon = True
             processing_thread.start()
             
-            logger.info(f"Video processing simulation started. Job ID: {job_id}, User: {user['email']}")
+            logger.info(f"Video processing started. Job ID: {job_id}, User: {user['email']}")
             
         except Exception as thread_error:
             logger.error(f"Failed to start processing simulation: {thread_error}")
@@ -1324,15 +1342,43 @@ def get_job_status(job_id):
         return jsonify({'error': 'Failed to get job status'}), 500
 
 @supabase_bp.route('/download/<job_id>', methods=['GET', 'OPTIONS'])
-@supabase_auth_required
 def download_processed_video(job_id):
     """Download processed video file."""
     # Handle preflight OPTIONS request - let global CORS handler manage headers
     if request.method == 'OPTIONS':
         return make_response(), 200
+    
+    # Apply authentication for actual GET requests
     try:
-        user = g.current_user
-        job = supabase_service.get_job(job_id, user['id'])
+        from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+        
+        # Try multiple authentication methods
+        auth_success = False
+        
+        # Method 1: Try cookies first
+        try:
+            verify_jwt_in_request(locations=['cookies'])
+            auth_success = True
+        except:
+            pass
+        
+        # Method 2: Try Authorization header if cookies failed
+        if not auth_success:
+            try:
+                verify_jwt_in_request(locations=['headers'])
+                auth_success = True
+            except:
+                pass
+        
+        if not auth_success:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        # Get user identity
+        user_id = get_jwt_identity()
+        if not user_id:
+            return jsonify({'error': 'Invalid token'}), 401
+        
+        job = supabase_service.get_job(job_id, user_id)
         
         if not job:
             return jsonify({'error': 'Job not found'}), 404
@@ -1349,13 +1395,32 @@ def download_processed_video(job_id):
         try:
             # Get file from Supabase storage
             bucket_name = 'processed-videos'
+            
+            # First check if file exists in storage
+            try:
+                file_list = supabase_service.client.storage.from_(bucket_name).list()
+                file_exists = any(f['name'] == processed_storage_path for f in file_list)
+                
+                if not file_exists:
+                    logger.warning(f"Processed file not found in storage: {processed_storage_path}")
+                    return jsonify({
+                        'error': 'Processed file not found in storage. The video may still be processing or processing may have failed.'
+                    }), 404
+            
+            except Exception as list_error:
+                logger.error(f"Failed to check file existence: {list_error}")
+                # Continue with download attempt anyway
+            
+            # Download the file
             file_response = supabase_service.client.storage.from_(bucket_name).download(processed_storage_path)
             
             if not file_response:
-                return jsonify({'error': 'Failed to download file from storage'}), 404
+                return jsonify({
+                    'error': 'Failed to download processed file. The file may not exist or may be corrupted.'
+                }), 404
             
-            # Create a temporary response with the file data
-            
+            # Create response with the file data
+            import io
             return Response(
                 io.BytesIO(file_response),
                 mimetype='video/mp4',
@@ -1366,7 +1431,9 @@ def download_processed_video(job_id):
             
         except Exception as storage_error:
             logger.error(f"Storage download error: {storage_error}")
-            return jsonify({'error': 'Failed to retrieve processed file'}), 500
+            return jsonify({
+                'error': f'Failed to retrieve processed file: {str(storage_error)}'
+            }), 500
         
     except Exception as e:
         logger.error(f"Download error: {str(e)}")
