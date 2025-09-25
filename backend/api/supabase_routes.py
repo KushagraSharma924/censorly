@@ -1327,6 +1327,9 @@ def get_job_status(job_id):
 @supabase_auth_required
 def download_processed_video(job_id):
     """Download processed video file."""
+    # Handle preflight OPTIONS request - let global CORS handler manage headers
+    if request.method == 'OPTIONS':
+        return make_response(), 200
     try:
         user = g.current_user
         job = supabase_service.get_job(job_id, user['id'])
